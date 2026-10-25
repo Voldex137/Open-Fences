@@ -1,21 +1,5 @@
 #include "fence_window.h"
-#include "fence_metrics.h"
-#include "desktop_host.h"
-#include "localization.h"
-#include "settings_panel.h"
-#include "context_menu.h"
-#include "menu_icons.h"
-#include "config.h"
-#include "explorer_sort.h"
-#include "shell_context_menu.h"
-#include <windowsx.h>
-#include <shellapi.h>
-#include <shlobj.h>
-#include <shobjidl.h>
-#include <shlwapi.h>
-#include <commctrl.h>
 #include <algorithm>
-#include <cmath>
 
 // Path-keyed membership: the bring-to-front reorder a drag performs must
 // not drop the selection, so no selection state may hang off indexes.

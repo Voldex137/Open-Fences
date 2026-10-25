@@ -1,20 +1,12 @@
 #include "fence_window.h"
-#include "fence_metrics.h"
 #include "desktop_host.h"
 #include "fence_drop_target.h"
 #include "shell_context_menu.h"
-#include "localization.h"
 #include "settings_panel.h"
-#include "context_menu.h"
-#include "menu_icons.h"
 #include "config.h"
-#include "explorer_sort.h"
-#include <windowsx.h>
 #include <shellapi.h>
-#include <shlobj.h>     // IShellFolder, PIDL helpers (shell context menu)
 #include <shobjidl.h>   // IContextMenu
 #include <shlwapi.h>
-#include <commctrl.h>   // TrackMouseEvent (hover leave tracking)
 #include <cmath>
 
 HWND FenceWindow::s_owner = nullptr;
