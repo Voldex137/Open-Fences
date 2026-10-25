@@ -8,6 +8,8 @@
 #include <algorithm>
 #include "render.h"
 
+struct IContextMenu;
+
 #define WM_FENCE_DELETE  (WM_APP + 100)
 #define WM_FENCE_RESHOW  (WM_APP + 101)   // posted to undo an external hide (Win+D)
 #define WM_FENCE_REFRESH (WM_APP + 102)   // source folder changed → re-enumerate
@@ -138,6 +140,13 @@ private:
     LRESULT OnFenceReshow(UINT msg, WPARAM wp, LPARAM lp);
     LRESULT OnSysCommand(UINT msg, WPARAM wp, LPARAM lp);
     LRESULT OnDestroy(UINT msg, WPARAM wp, LPARAM lp);
+
+    // Context menus (fence_menu.cpp)
+    void RemoveIconAt(int idx);                       // drop one icon and fix selection/hover
+    bool ShowIconShellMenu(int iconHit, POINT screenPt);
+    void ShowFenceMenu(int iconHit, POINT screenPt, POINT clientPt);
+    void ChooseAndMapFolder();
+    void CreateShellNewItem(IContextMenu* newMenu, int cmd, POINT clientPt);
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     void CaptureBackdrop();   // re-snapshot the desktop behind the fence
