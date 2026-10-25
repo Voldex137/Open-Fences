@@ -89,6 +89,9 @@ public:
     /// While collapsed, re-apply the window height so a live-edited title bar
     /// height shows immediately (no-op when expanded).
     void SyncCollapsedSize();
+    // Adopts the editable look of `src` (a preset, the defaults, or another fence)
+    // and brings the layout and the saved config in line with it.
+    void ApplyStyle(const FenceAppearance& src);
 
     // Display mode save/restore: called by the settings panel before/after
     // switching between grid (0) and list (1) mode.
@@ -155,6 +158,7 @@ private:
     // Mouse handling steps (fence_mouse.cpp)
     bool PressListScrollbar(int mx, int my);        // true when the press hit the scrollbar
     void PressTitleBar(int mx, int my);
+    void PressTile(int mx, int my);
     void BeginIconDrag(int hit, int mx, int my);
     void BeginMarquee(int mx, int my, bool addToSelection);
     void UpdateCursorShape(int mx, int my);
@@ -326,6 +330,10 @@ private:
     bool m_chevronHover = false;
     bool m_chevronDown = false;
     int  m_expandedH = 0;       // full height remembered while collapsed
+    int  m_expandedW = 0;       // full width remembered while collapsed (an icon tile is narrower)
+    bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
+    POINT m_tilePressPt = {};
+    void CollapsedSize(int& w, int& h) const;   // window size while collapsed
     // Icon metrics changed while collapsed: the grid cannot be rebuilt with
     // the window folded (its height is just the title bar), so the relayout
     // is deferred until the fence expands again.

@@ -7,6 +7,7 @@
 #include "fence/fence_manager.h"
 #include "menu/context_menu.h"
 #include "render/menu_icons.h"
+#include "settings/settings_panel.h"
 #include "shell/desktop_icons.h"
 
 #include <shellapi.h>
@@ -28,6 +29,7 @@ enum TrayCmd : int {
     kCmdConfigLocation    = 113,
     kCmdCreateShortcut    = 114,
     kCmdStorageFolder     = 115,
+    kCmdDefaultSettings   = 116,
     kCmdLanguageBase      = 200,   // one command per loaded language
 };
 
@@ -102,6 +104,7 @@ HMENU BuildMenu() {
         kCmdAutoStart, L10n::Tr("tray.start_with_windows"));
     AppendMenuW(menu, MF_STRING, kCmdConfigLocation, L10n::Tr("tray.config_location"));
     AppendMenuW(menu, MF_STRING, kCmdStorageFolder, L10n::Tr("tray.storage_folder"));
+    AppendMenuW(menu, MF_STRING, kCmdDefaultSettings, L10n::Tr("tray.default_settings"));
     AppendMenuW(menu, MF_STRING, kCmdCreateShortcut, L10n::Tr("tray.create_shortcut"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kCmdExit, L10n::Tr("tray.exit"));
@@ -149,6 +152,8 @@ void Execute(HWND owner, int cmd) {
         Config::RevealFile();
     } else if (cmd == kCmdStorageFolder) {
         ChooseStorageFolder(owner);
+    } else if (cmd == kCmdDefaultSettings) {
+        SettingsPanel::RunDefaults();
     } else if (cmd == kCmdCreateShortcut) {
         CreateDesktopShortcut();
     } else if (cmd == kCmdExit) {

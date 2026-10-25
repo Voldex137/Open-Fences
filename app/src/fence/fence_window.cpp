@@ -4,6 +4,7 @@
 #include "menu/shell_context_menu.h"
 #include "settings/settings_panel.h"
 #include "core/config.h"
+#include "core/appearance_json.h"
 #include "core/storage.h"
 #include <shellapi.h>
 #include <shobjidl.h>   // IContextMenu
@@ -192,12 +193,23 @@ void FenceWindow::SetDragOver(bool over) {
     }
 }
 
+void FenceWindow::CollapsedSize(int& w, int& h) const {
+    const FenceAppearance& app = m_render->Appearance();
+    if (app.collapseStyle == 1) {   // icon tile: as big as a desktop icon cell
+        w = (int)(app.cellW + 0.5f);
+        h = (int)(app.cellH + 0.5f);
+    } else {                        // title bar: keeps the expanded width
+        w = m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
+        h = (int)(app.titleH + 0.5f);
+    }
+}
+
 void FenceWindow::ToggleCollapse() {
     int th = (int)(m_render->Appearance().titleH + 0.5f);
-    int w  = (int)m_render->Width();
     if (m_collapsed) {
-        // Expand back to the remembered full height
+        // Expand back to the remembered full size
         m_collapsed = false;
+        int w = m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
         int h = m_expandedH > th ? m_expandedH : th * 4;
         SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
@@ -211,7 +223,10 @@ void FenceWindow::ToggleCollapse() {
         // Collapse down to just the title bar
         m_collapsed = true;
         m_expandedH = (int)m_render->Height();
-        SetWindowPos(m_hwnd, nullptr, 0, 0, w, th,
+        m_expandedW = (int)m_render->Width();
+        int w, h;
+        CollapsedSize(w, h);
+        SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     }
     // SetWindowPos raises WM_SIZE → Resize + Redraw, and Redraw already knows
@@ -221,10 +236,28 @@ void FenceWindow::ToggleCollapse() {
 
 void FenceWindow::SyncCollapsedSize() {
     if (!m_collapsed) return;
-    int th = (int)(m_render->Appearance().titleH + 0.5f);
-    int w  = (int)m_render->Width();
-    SetWindowPos(m_hwnd, nullptr, 0, 0, w, th,
+    int w, h;
+    CollapsedSize(w, h);
+    SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
+void FenceWindow::ApplyStyle(const FenceAppearance& src) {
+    FenceAppearance& app = m_render->Appearance();
+    int oldMode = app.displayMode;
+    AppearanceJson::CopyStyle(app, src);
+    m_render->RebuildStyles();
+    SyncCollapsedSize();
+    if (!m_collapsed) {
+        if (oldMode != app.displayMode) {
+            if (app.displayMode == 1) SaveGridLayout();
+            else                      RestoreGridLayout();
+        }
+        if (app.displayMode == 0 && app.autoReflow) ReflowIcons();
+        else                                         RelayoutIcons();
+    }
+    Redraw();
+    Config::MarkDirty();
 }
 
 void FenceWindow::ScheduleBackdropRefresh() {
@@ -358,8 +391,9 @@ LRESULT FenceWindow::OnSize(UINT msg, WPARAM wp, LPARAM lp)     {
         // when the fence shrinks). Skip while collapsing: the tiny height
         // would crush every icon's row and the layout would be lost on
         // expand. RelayoutIcons redraws on its own.
-        if (!m_collapsed) ReflowIcons();
-        else                    Redraw();
+        if (m_collapsed)                                      Redraw();
+        else if (m_render->Appearance().autoReflow)           ReflowIcons();
+        else                                                  RelayoutIcons();
     }
     return 0;
 }

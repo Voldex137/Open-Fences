@@ -109,6 +109,11 @@ LRESULT FenceWindow::OnLButtonDown(UINT msg, WPARAM wp, LPARAM lp) {
     if (m_renameIcon >= 0 && HitTestIcon(mx, my) != m_renameIcon)
         ExitIconRename(true);
 
+    if (m_collapsed && m_render->Appearance().collapseStyle == 1 && !m_renaming) {
+        PressTile(mx, my);
+        return 0;
+    }
+
     const int titleH = (int)m_render->Appearance().titleH;
     if (!m_renaming && my < titleH) {
         PressTitleBar(mx, my);
@@ -148,6 +153,17 @@ bool FenceWindow::PressListScrollbar(int mx, int my) {
         SetCapture(m_hwnd);
     }
     return true;
+}
+
+// Press on a collapsed icon tile: a plain click expands the fence, a drag moves it
+// (OnLButtonUp tells them apart by how far the cursor travelled).
+void FenceWindow::PressTile(int mx, int my) {
+    m_moveOffX = mx;
+    m_moveOffY = my;
+    m_moving = true;
+    m_tilePress = true;
+    GetCursorPos(&m_tilePressPt);
+    SetCapture(m_hwnd);
 }
 
 // Press inside the title bar: the collapse arrow at the right end, or a drag of
@@ -281,7 +297,8 @@ void FenceWindow::TrackChevronHover(int mx, int my) {
     if (m_renaming || m_moving || m_resizeMask || m_dragIcon >= 0 || m_marquee) return;
     int th = (int)m_render->Appearance().titleH;
     int arrowL = (int)(m_render->Width() - m_render->Appearance().titleH);
-    bool inside = my >= 0 && my < th && mx >= arrowL;
+    bool inside = my >= 0 && my < th && mx >= arrowL &&
+                  !(m_collapsed && m_render->Appearance().collapseStyle == 1);
     if (inside != m_chevronHover) {
         m_chevronHover = inside;
         Redraw();
@@ -396,6 +413,18 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
         else        Redraw();
         return 0;
     }
+    if (m_tilePress) {
+        m_tilePress = false;
+        POINT p; GetCursorPos(&p);
+        bool click = abs(p.x - m_tilePressPt.x) < GetSystemMetrics(SM_CXDRAG) &&
+                     abs(p.y - m_tilePressPt.y) < GetSystemMetrics(SM_CYDRAG);
+        if (click) {
+            m_moving = false;
+            ReleaseCapture();
+            ToggleCollapse();
+            return 0;
+        }
+    }
     bool wasBusy = m_dragIcon >= 0 || m_moving ||
                    m_resizeMask || m_marquee;
     if (m_marquee) {
@@ -443,6 +472,7 @@ LRESULT FenceWindow::OnCaptureChanged(UINT msg, WPARAM wp, LPARAM lp)     {
             m_marqueeBase.clear();
             Redraw();
         }
+        m_tilePress = false;
         if (m_moving || m_resizeMask) Config::MarkDirty();
         m_moving = false;
         m_resizeMask = 0;

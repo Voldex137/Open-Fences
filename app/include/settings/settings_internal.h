@@ -17,6 +17,11 @@ enum : int {
     HIT_DISPMODE0 = 180,           // +0 grid, +1 list
     HIT_FILLDIR0  = 190,           // +0 horizontal, +1 vertical
     HIT_DELETE_FENCE = 200,
+    HIT_AUTOFIT0   = 210,          // +0 on, +1 off
+    HIT_COLLAPSE0  = 220,          // +0 title bar, +1 icon
+    HIT_TITLEICON0 = 230,          // +0 off, +1 on
+    HIT_ICONPICK0  = 240,          // +0 folder, +1 from file, +2 from folder
+    HIT_PRESETS    = 250,
 };
 
 // Dark preset tints (panel body / title bar). The first entry of each row is

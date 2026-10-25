@@ -66,6 +66,7 @@ add_executable(openfences
     app/src/render/render_surface.cpp
     app/src/settings/settings_panel.cpp
     app/src/settings/settings_panel_style.cpp
+    app/src/settings/settings_panel_presets.cpp
     app/src/settings/settings_panel_layout.cpp
     app/src/settings/settings_panel_draw.cpp
     app/src/settings/settings_panel_input.cpp
@@ -79,6 +80,8 @@ add_executable(openfences
     app/src/render/menu_icons.cpp
     app/src/core/config.cpp
     app/src/core/storage.cpp
+    app/src/core/appearance_json.cpp
+    app/src/core/presets.cpp
     app/src/core/localization.cpp
     app/src/shell/explorer_sort.cpp
     app/src/app.rc
@@ -159,4 +162,9 @@ if(OPENFENCES_BUILD_TESTS)
     add_executable(list_scrollbar_test tests/list_scrollbar_test.cpp app/src/render/list_scrollbar.cpp)
     target_include_directories(list_scrollbar_test PRIVATE app/include tests)
     add_test(NAME list_scrollbar COMMAND list_scrollbar_test)
+
+    add_executable(appearance_json_test tests/appearance_json_test.cpp app/src/core/appearance_json.cpp)
+    target_include_directories(appearance_json_test PRIVATE app/include tests)
+    target_link_libraries(appearance_json_test PRIVATE nlohmann_json::nlohmann_json)
+    add_test(NAME appearance_json COMMAND appearance_json_test)
 endif()

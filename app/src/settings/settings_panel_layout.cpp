@@ -88,24 +88,30 @@ void SettingsPanel::ComputeLayout() {
     m_thPlus = R(cx + cw - btn, stY, btn, btn);
     addHit(HIT_TITLEH_PLUS, m_thPlus);
 
-    // Display mode (grid / list) — 2-way segmented control
-    m_displayModeLblY = listBot + 344 * s;
-    float dmSegW = (cw - 4 * s) / 2, dmY = listBot + 362 * s;
-    for (int i = 0; i < 2; i++) {
-        m_displayModeSeg[i] = R(cx + i * (dmSegW + 4 * s), dmY, dmSegW, 26 * s);
-        addHit(HIT_DISPMODE0 + i, m_displayModeSeg[i]);
-    }
+    // ── Second column: layout behaviour, collapse, presets ──
+    float cx2 = 372 * s, cw2 = 308 * s;
+    float half = (cw2 - 4 * s) / 2, third = (cw2 - 8 * s) / 3;
+    auto row = [&](int k, float& labelY, int n, float w, RECT* out, int hitBase) {
+        labelY = (52 + k * 56) * s;
+        float y = (70 + k * 56) * s;
+        for (int i = 0; i < n; i++) {
+            out[i] = R(cx2 + i * (w + 4 * s), y, w, 26 * s);
+            addHit(hitBase + i, out[i]);
+        }
+    };
+    row(0, m_displayModeLblY, 2, half, m_displayModeSeg, HIT_DISPMODE0);
+    row(1, m_fillDirLblY,     2, half, m_fillDirSeg,     HIT_FILLDIR0);
+    row(2, m_autoFitLblY,     2, half, m_autoFitSeg,     HIT_AUTOFIT0);
+    row(3, m_collapseLblY,    2, half, m_collapseSeg,    HIT_COLLAPSE0);
+    row(4, m_titleIconLblY,   2, half, m_titleIconSeg,   HIT_TITLEICON0);
+    row(5, m_iconPickLblY,    3, third, m_iconPickSeg,   HIT_ICONPICK0);
 
-    // Grid fill direction — 2-way segmented control
-    m_fillDirLblY = listBot + 400 * s;
-    float fdY = listBot + 418 * s;
-    for (int i = 0; i < 2; i++) {
-        m_fillDirSeg[i] = R(cx + i * (dmSegW + 4 * s), fdY, dmSegW, 26 * s);
-        addHit(HIT_FILLDIR0 + i, m_fillDirSeg[i]);
+    m_sepY = 392 * s;
+    m_presetsBtn = R(cx2, 404 * s, cw2, 30 * s);
+    addHit(HIT_PRESETS, m_presetsBtn);
+    // Language lives in the tray menu; the defaults have no fence to delete.
+    if (m_fence) {
+        m_deleteBtn = R(cx2, 446 * s, cw2, 30 * s);
+        addHit(HIT_DELETE_FENCE, m_deleteBtn);
     }
-
-    // Separator + delete (language lives in the tray menu, not here)
-    m_sepY = listBot + 456 * s;
-    m_deleteBtn = R(cx, listBot + 468 * s, cw, 30 * s);
-    addHit(HIT_DELETE_FENCE, m_deleteBtn);
 }

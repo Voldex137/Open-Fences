@@ -47,6 +47,10 @@ struct FenceAppearance {
     float iconSize   = 11.0f;   // icon *label* font size
     int   titleAlign = 0;       // title text: 0 = left, 1 = center, 2 = right
     int   fillDir    = 0;       // grid fill order: 0 = horizontal (row by row), 1 = vertical
+    bool  autoReflow = true;    // grid: re-flow icons to the window size on every resize
+    int   collapseStyle = 0;    // when collapsed: 0 = title bar, 1 = icon tile
+    bool  titleIcon = false;    // draw the icon before the title text
+    WCHAR iconPath[260] = L"";  // file/folder whose icon is shown; empty = a folder
     int   displayMode = 0;      // 0 = grid (icons in a grid), 1 = list (one per row)
     WCHAR fontName[64] = L"Segoe UI";
 
@@ -154,6 +158,9 @@ private:
     struct IconMetrics;
     struct IconState;
     void DrawCollapsedFence(const Frame& f);
+    void DrawCollapsedTile(const Frame& f);
+    // Draws the fence's chosen icon (m_app.iconPath) into the square at (x, y).
+    void DrawFenceIcon(const Frame& f, float x, float y, float size);
     void DrawTitleBar(const Frame& f);
     void DrawTopHighlight(const Frame& f);
     void DrawTitleText(const Frame& f);

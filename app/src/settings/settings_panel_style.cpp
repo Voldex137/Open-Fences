@@ -83,12 +83,5 @@ void SettingsPanel::LoadFonts() {
     std::sort(m_fonts.begin(), m_fonts.end());
     m_fonts.erase(std::unique(m_fonts.begin(), m_fonts.end()), m_fonts.end());
 
-    const auto& app = m_fence->GetRender().Appearance();
-    for (int i = 0; i < (int)m_fonts.size(); i++) {
-        if (lstrcmpiW(m_fonts[i].c_str(), app.fontName) == 0) { m_selFont = i; break; }
-    }
-    if (m_selFont >= 0) {   // bring the current font into view
-        m_fontScrollTop = clampi(m_selFont, 0,
-            (std::max)(0, (int)m_fonts.size() - m_fontRows));
-    }
+    SyncFontSelection();
 }

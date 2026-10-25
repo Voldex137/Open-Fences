@@ -26,12 +26,17 @@ public:
     /// Open the panel for `fence`. If a panel is already open it is simply
     /// brought to the front. Blocks until the panel is closed.
     static void Run(FenceWindow* fence);
+    /// Same panel, but editing the look new fences start with (tray menu).
+    static void RunDefaults();
     /// Defensive close used by ~FenceWindow: if the active panel belongs to
     /// `fence`, tear it down so it never references a destroyed fence.
     static void CloseActiveFor(const FenceWindow* fence);
 
 private:
+    // `fence` null = editing the defaults (m_defaults) instead of a fence.
     explicit SettingsPanel(FenceWindow* fence);
+    static void RunPanel(FenceWindow* fence);
+    FenceAppearance& App();   // the appearance being edited
     ~SettingsPanel();
     SettingsPanel(const SettingsPanel&) = delete;
     SettingsPanel& operator=(const SettingsPanel&) = delete;
@@ -53,10 +58,11 @@ private:
                       const RECT* rects, int active, int hitBase);
     void DrawTitleHeightStepper(const FenceAppearance& app);
     void DrawDeleteButton();
+    void DrawPresetsButton();
     void FillRounded(const RECT& rc, float radius, ID2D1Brush* brush);
     void DrawString(const std::wstring& text, const RECT& rc, IDWriteTextFormat* format, ID2D1Brush* brush);
     void DrawHoverRing(const RECT& rc, int hitId);
-    void DrawLabel(const std::wstring& text, float y);
+    void DrawLabel(const std::wstring& text, float y, float x = -1.0f);
     void DrawValueRight(const std::wstring& text, float y);
     void Repaint();
     void ApplyToFence();
@@ -81,6 +87,9 @@ private:
     void SetTitleColor(int idx);
     void ChoosePanelColor();
     void ChooseTitleColor();
+    void ChooseIconFile(bool folder);
+    void ShowPresetsMenu();
+    void SyncFontSelection();
 
     void RunLoop();
 
@@ -129,7 +138,14 @@ private:
     RECT m_titlePosSeg[3] = {};   // title alignment: left / center / right
     RECT m_displayModeSeg[2] = {}; // display mode: grid / list
     RECT m_fillDirSeg[2] = {};     // grid fill direction: horizontal / vertical
-    float m_fillDirLblY = 0;
+    RECT m_autoFitSeg[2] = {};     // auto-fit grid to the window: on / off
+    RECT m_collapseSeg[2] = {};    // collapse style: title bar / icon
+    RECT m_titleIconSeg[2] = {};   // icon before the title: off / on
+    RECT m_iconPickSeg[3] = {};    // icon source: folder / file / folder icon
+    RECT m_presetsBtn = {};
+    float m_fillDirLblY = 0, m_autoFitLblY = 0, m_collapseLblY = 0, m_titleIconLblY = 0,
+          m_iconPickLblY = 0;
+    FenceAppearance m_defaults;    // edited copy while the panel is in defaults mode
     RECT m_deleteBtn = {};
     float m_rowH = 26.0f;
     // Label-band Y positions for drawing (set by ComputeLayout)

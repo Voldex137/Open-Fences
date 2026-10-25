@@ -18,7 +18,7 @@ int SettingsPanel::HitTest(int mx, int my) const {
 
 void SettingsPanel::PickFont(int idx) {
     if (idx < 0 || idx >= (int)m_fonts.size()) return;
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     wcscpy_s(app.fontName, _countof(app.fontName), m_fonts[idx].c_str());
     m_selFont = idx;
     if (idx < m_fontScrollTop) m_fontScrollTop = idx;
@@ -29,14 +29,14 @@ void SettingsPanel::PickFont(int idx) {
 
 void SettingsPanel::SetSizeValue(int v) {
     v = clampi(v, 8, 24);
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     int cur = (int)(app.fontSize / m_s + 0.5f);
     if (v != cur) { app.fontSize = (float)v * m_s; ApplyToFence(); Repaint(); }
 }
 
 void SettingsPanel::SetOpacityValue(int v) {
     v = clampi(v, 30, 100);
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     int cur = (int)(app.bg[3] * 100 + 0.5f);
     if (v != cur) {
         app.bg[3] = v / 100.0f;
@@ -59,18 +59,18 @@ void SettingsPanel::SetOpacityFromX(int mx) {
 }
 
 void SettingsPanel::AdjustTitleH(float deltaDesign) {
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     float nv = clampf(app.titleH + deltaDesign * m_s, 16 * m_s, 80 * m_s);
     if (fabsf(nv - app.titleH) > 0.5f) {
         app.titleH = nv;
         ApplyToFence();
-        m_fence->RelayoutIcons();   // the grid's top edge moved; re-seat icons
+        if (m_fence) m_fence->RelayoutIcons();   // the grid's top edge moved; re-seat icons
         Repaint();
     }
 }
 
 void SettingsPanel::SetPanelColor(int idx) {
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     app.bg[0] = kPanelColors[idx][0];
     app.bg[1] = kPanelColors[idx][1];
     app.bg[2] = kPanelColors[idx][2];
@@ -79,7 +79,7 @@ void SettingsPanel::SetPanelColor(int idx) {
 }
 
 void SettingsPanel::SetTitleColor(int idx) {
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     app.title[0] = kTitleColors[idx][0];
     app.title[1] = kTitleColors[idx][1];
     app.title[2] = kTitleColors[idx][2];
@@ -88,7 +88,7 @@ void SettingsPanel::SetTitleColor(int idx) {
 }
 
 void SettingsPanel::ChoosePanelColor() {
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     CHOOSECOLORW cc = {sizeof(cc)};
     static COLORREF cust[16] = {};
     cc.lpCustColors = cust;
@@ -105,7 +105,7 @@ void SettingsPanel::ChoosePanelColor() {
 }
 
 void SettingsPanel::ChooseTitleColor() {
-    auto& app = m_fence->GetRender().Appearance();
+    auto& app = App();
     CHOOSECOLORW cc = {sizeof(cc)};
     static COLORREF cust[16] = {};
     cc.lpCustColors = cust;
@@ -151,38 +151,64 @@ void SettingsPanel::OnLButtonDown(int mx, int my) {
     case HIT_TITLEH_MINUS:  AdjustTitleH(-4); break;
     case HIT_TITLEH_PLUS:   AdjustTitleH(+4); break;
     case HIT_TITLEPOS0: case HIT_TITLEPOS0 + 1: case HIT_TITLEPOS0 + 2: {
-        auto& app = m_fence->GetRender().Appearance();
+        auto& app = App();
         int align = id - HIT_TITLEPOS0;
         if (app.titleAlign != align) { app.titleAlign = align; ApplyToFence(); Repaint(); }
         break;
     }
     case HIT_PANEL_MORE:    ChoosePanelColor(); break;
     case HIT_TITLE_MORE:    ChooseTitleColor(); break;
+    case HIT_AUTOFIT0: case HIT_AUTOFIT0 + 1: {
+        auto& app = App();
+        app.autoReflow = (id == HIT_AUTOFIT0);
+        ApplyToFence();
+        if (app.autoReflow && m_fence) m_fence->ReflowIcons();
+        Repaint();
+        break;
+    }
+    case HIT_COLLAPSE0: case HIT_COLLAPSE0 + 1:
+        App().collapseStyle = id - HIT_COLLAPSE0;
+        ApplyToFence();
+        Repaint();
+        break;
+    case HIT_TITLEICON0: case HIT_TITLEICON0 + 1:
+        App().titleIcon = (id == HIT_TITLEICON0 + 1);
+        ApplyToFence();
+        Repaint();
+        break;
+    case HIT_ICONPICK0:
+        App().iconPath[0] = L'\0';
+        ApplyToFence();
+        Repaint();
+        break;
+    case HIT_ICONPICK0 + 1: ChooseIconFile(false); break;
+    case HIT_ICONPICK0 + 2: ChooseIconFile(true);  break;
+    case HIT_PRESETS:       ShowPresetsMenu();     break;
     case HIT_FILLDIR0: case HIT_FILLDIR0 + 1: {
-        auto& app = m_fence->GetRender().Appearance();
+        auto& app = App();
         int dir = id - HIT_FILLDIR0;
         if (app.fillDir != dir) {
             app.fillDir = dir;
             ApplyToFence();
-            m_fence->ReflowIcons();
+            if (m_fence) m_fence->ReflowIcons();
             Repaint();
         }
         break;
     }
     case HIT_DISPMODE0: case HIT_DISPMODE0 + 1: {
-        auto& app = m_fence->GetRender().Appearance();
+        auto& app = App();
         int mode = id - HIT_DISPMODE0;
         if (app.displayMode != mode) {
             if (mode == 1) {   // switching to list: save grid layout
-                m_fence->SaveGridLayout();
+                if (m_fence) m_fence->SaveGridLayout();
             }
             app.displayMode = mode;
             ApplyToFence();
             if (mode == 1) {
-                m_fence->RelayoutIcons();
+                if (m_fence) m_fence->RelayoutIcons();
             } else {
-                m_fence->RestoreGridLayout();
-                m_fence->RelayoutIcons();
+                if (m_fence) m_fence->RestoreGridLayout();
+                if (m_fence) m_fence->RelayoutIcons();
             }
             Repaint();
         }
@@ -239,10 +265,10 @@ void SettingsPanel::OnMouseWheel(int delta, int sx, int sy) {
     if (PtInRect(&m_fontList, p) || PtInRect(&m_fontScroll, p)) {
         ScrollFontList(delta > 0 ? -3 : 3);
     } else if (PtInRect(&m_sizeSlider, p)) {
-        auto& app = m_fence->GetRender().Appearance();
+        auto& app = App();
         SetSizeValue((int)(app.fontSize / m_s + 0.5f) + (delta > 0 ? 1 : -1));
     } else if (PtInRect(&m_opSlider, p)) {
-        auto& app = m_fence->GetRender().Appearance();
+        auto& app = App();
         SetOpacityValue((int)(app.bg[3] * 100 + 0.5f) + (delta > 0 ? 1 : -1));
     }
 }

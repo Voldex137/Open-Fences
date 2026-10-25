@@ -3,6 +3,8 @@
 #include "fence/fence_manager.h"
 #include "core/localization.h"
 #include "core/storage.h"
+#include "core/appearance_json.h"
+#include "core/presets.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)
@@ -37,14 +39,6 @@ std::wstring FromUtf8(const std::string& s) {
     return w;
 }
 
-// Copy a JSON array of 4 numbers into an rgba float[4]; untouched when the
-// value is missing or malformed (keeps the design default).
-void GetColor4(const json& j, const char* key, float out[4]) {
-    if (!j.contains(key) || !j[key].is_array() || j[key].size() != 4) return;
-    for (int i = 0; i < 4; i++)
-        if (j[key][i].is_number()) out[i] = j[key][i].get<float>();
-}
-
 json SaveFence(FenceWindow& f) {
     FenceData d = f.GetData();
     const FenceAppearance& app = f.GetRender().Appearance();
@@ -56,17 +50,10 @@ json SaveFence(FenceWindow& f) {
     jf["w"]         = d.w;
     jf["h"]         = d.h;
     jf["collapsed"] = f.IsCollapsed();
-    jf["bg"]        = { app.bg[0], app.bg[1], app.bg[2], app.bg[3] };
-    jf["titleColor"]= { app.title[0], app.title[1], app.title[2], app.title[3] };
-    jf["titleAlign"]= app.titleAlign;
-    jf["displayMode"]= app.displayMode;
-    jf["fillDir"]    = app.fillDir;
+    jf.update(AppearanceJson::ToJson(app));
     jf["source"]    = ToUtf8(d.sourceFolder);
     jf["sortCol"]   = d.sortCol;
     jf["sortAsc"]   = d.sortAsc;
-    jf["titleH"]    = app.titleH;   // physical px (appearance is pre-scaled)
-    jf["fontSize"]  = app.fontSize;
-    jf["fontName"]  = ToUtf8(app.fontName);
     json icons = json::array();
     for (const IconEntry& e : f.Icons()) {
         icons.push_back({
@@ -95,18 +82,7 @@ void LoadFence(const json& jf) {
 
     // Appearance: restore exactly the fields the settings panel edits.
     FenceAppearance& app = f->GetRender().Appearance();
-    GetColor4(jf, "bg", app.bg);
-    GetColor4(jf, "titleColor", app.title);
-    app.titleAlign = jf.value("titleAlign", app.titleAlign);
-    app.displayMode = jf.value("displayMode", app.displayMode);
-    app.fillDir     = jf.value("fillDir", app.fillDir);
-    app.titleH     = jf.value("titleH", app.titleH);
-    app.fontSize   = jf.value("fontSize", app.fontSize);
-    if (jf.contains("fontName") && jf["fontName"].is_string()) {
-        std::wstring fn = FromUtf8(jf["fontName"].get<std::string>());
-        if (!fn.empty())
-            wcscpy_s(app.fontName, _countof(app.fontName), fn.c_str());
-    }
+    AppearanceJson::FromJson(jf, app);
     f->GetRender().RebuildStyles();
 
     fd.sourceFolder = FromUtf8(jf.value("source", std::string()));
@@ -163,6 +139,7 @@ bool SaveNow() {
     j["language"] = ToUtf8(L10n::CurrentCode());
     j["storageFolder"] = ToUtf8(Storage::Folder());
     j["hideAll"]  = FenceManager::AllHidden();
+    j["styles"]   = Presets::ToJson();
     json fences = json::array();
     for (const auto& f : FenceManager::All())
         fences.push_back(SaveFence(*f));
@@ -227,6 +204,8 @@ bool LoadApp() {
         else if (jl.is_number_integer())
             L10n::SetLanguage(jl.get<int>() == 1 ? L"zh-CN" : L"en");
     }
+
+    if (j.contains("styles")) Presets::FromJson(j["styles"]);   // before the fences: they may copy the defaults
 
     if (j.contains("fences") && j["fences"].is_array())
         for (const auto& jf : j["fences"])

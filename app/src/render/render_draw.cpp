@@ -152,7 +152,37 @@ bool RenderContext::DrawFence(const std::wstring& title,
 
 // ── Title area ──
 
+void RenderContext::DrawFenceIcon(const Frame& f, float x, float y, float size) {
+    // An empty path means "a folder": a name with no extension that does not exist
+    // makes LoadFileIcon fall back to the generic folder icon.
+    const wchar_t* path = m_app.iconPath[0] ? m_app.iconPath : L"openFences-folder";
+    ID2D1Bitmap* bmp = LoadFileIcon(path);
+    if (!bmp) return;
+    f.ctx.DrawBitmap(bmp, D2D1::RectF(x, y, x + size, y + size), 1.0f,
+                     D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
+}
+
+// Collapsed into a tile: the chosen icon with the title underneath, like a desktop icon.
+void RenderContext::DrawCollapsedTile(const Frame& f) {
+    D2D1_ROUNDED_RECT shape{ { 0, 0, f.w, f.h }, f.radius, f.radius };
+    if (m_backdropBrush) f.ctx.FillRoundedRectangle(shape, m_backdropBrush.Get());
+    if (f.renaming) {
+        auto renaming = MakeBrush(f.ctx, kRenamingTitleColor);
+        f.ctx.FillRoundedRectangle(shape, renaming.Get());
+    } else {
+        f.ctx.FillRoundedRectangle(shape, m_titleBrush.Get());
+    }
+    DrawTopHighlight(f);
+    float glyph = (std::min)(m_app.imgSize, f.w - 8.0f);
+    DrawFenceIcon(f, (f.w - glyph) * 0.5f, 6.0f, glyph);
+    D2D1_RECT_F label{ 3.0f, 6.0f + glyph + 2.0f, f.w - 3.0f, f.h - 2.0f };
+    f.ctx.DrawText(f.title.c_str(), (UINT32)f.title.size(), m_iconFormat.Get(), label,
+                   m_textBrush.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
+    if (m_borderGradBrush) f.ctx.DrawRoundedRectangle(shape, m_borderGradBrush.Get(), 1.0f);
+}
+
 void RenderContext::DrawCollapsedFence(const Frame& f) {
+    if (m_app.collapseStyle == 1) { DrawCollapsedTile(f); return; }
     D2D1_ROUNDED_RECT shape{ { 0, 0, f.w, f.h }, f.radius, f.radius };
     if (m_backdropBrush) f.ctx.FillRoundedRectangle(shape, m_backdropBrush.Get());
     if (f.renaming) {
@@ -201,7 +231,13 @@ void RenderContext::DrawTopHighlight(const Frame& f) {
 // region (the right edge stops before the chevron box).
 void RenderContext::DrawTitleText(const Frame& f) {
     float right = (m_app.titleAlign == 0) ? (f.w - f.titleH) : (f.w - f.titleH - kTitleTextPad);
-    D2D1_RECT_F textRect{ kTitleTextPad, 0, right, f.titleH };
+    float left = kTitleTextPad;
+    if (m_app.titleIcon) {
+        float icon = f.titleH * 0.62f;
+        DrawFenceIcon(f, kTitleTextPad, (f.titleH - icon) * 0.5f, icon);
+        left += icon + kTitleTextPad * 0.6f;
+    }
+    D2D1_RECT_F textRect{ left, 0, right, f.titleH };
     f.ctx.DrawText(f.title.c_str(), (UINT32)f.title.size(), m_titleFormat.Get(), textRect,
                    m_textBrush.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
 }

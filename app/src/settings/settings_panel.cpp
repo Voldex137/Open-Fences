@@ -4,6 +4,7 @@
 #include "core/localization.h"
 #include "fence/fence_window.h"
 #include "core/config.h"
+#include "core/presets.h"
 #include <windowsx.h>
 #include <commdlg.h>
 #include <algorithm>
@@ -16,7 +17,16 @@ SettingsPanel* SettingsPanel::s_active = nullptr;
 // ── Lifetime ──
 
 void SettingsPanel::Run(FenceWindow* fence) {
-    if (!fence) return;
+    if (fence) RunPanel(fence);
+}
+
+void SettingsPanel::RunDefaults() { RunPanel(nullptr); }
+
+FenceAppearance& SettingsPanel::App() {
+    return m_fence ? m_fence->GetRender().Appearance() : m_defaults;
+}
+
+void SettingsPanel::RunPanel(FenceWindow* fence) {
     if (s_active) {                             // single instance: just raise
         if (s_active->m_hwnd) SetForegroundWindow(s_active->m_hwnd);
         return;
@@ -42,7 +52,8 @@ void SettingsPanel::CloseActiveFor(const FenceWindow* fence) {
 }
 
 SettingsPanel::SettingsPanel(FenceWindow* fence) : m_fence(fence) {
-    m_fenceHwnd = fence->Hwnd();
+    m_fenceHwnd = fence ? fence->Hwnd() : nullptr;
+    if (!fence) m_defaults = Presets::Default();
     m_s = Desktop::DpiScale();
     s_active = this;
 
@@ -61,18 +72,23 @@ SettingsPanel::SettingsPanel(FenceWindow* fence) : m_fence(fence) {
     // Size + position. The panel tries the fence's right, falls back to the
     // left, and is clamped to the monitor work area. If it still does not
     // fit vertically, the font-list viewport shrinks (min 3 visible rows).
-    HMONITOR mon = MonitorFromWindow(m_fenceHwnd, MONITOR_DEFAULTTONEAREST);
+    POINT cursor = {};
+    GetCursorPos(&cursor);
+    HMONITOR mon = m_fenceHwnd ? MonitorFromWindow(m_fenceHwnd, MONITOR_DEFAULTTONEAREST)
+                               : MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST);
     MONITORINFO mi = {sizeof(mi)};
     GetMonitorInfoW(mon, &mi);
     int waH = mi.rcWork.bottom - mi.rcWork.top;
 
     m_fontRows = 5;
-    auto heightFor = [&](int rows) { return (int)((583 + rows * 26) * m_s); };
+    auto heightFor = [&](int rows) { return (int)((std::max)(422 + rows * 26, 500) * m_s); };
     m_panelH = heightFor(m_fontRows);
     while (m_panelH > waH && m_fontRows > 3) { m_fontRows--; m_panelH = heightFor(m_fontRows); }
-    m_panelW = (int)(360 * m_s);
+    m_panelW = (int)(700 * m_s);
 
-    RECT frc; GetWindowRect(m_fenceHwnd, &frc);
+    RECT frc;
+    if (m_fenceHwnd) GetWindowRect(m_fenceHwnd, &frc);
+    else frc = RECT{ cursor.x - m_panelW, cursor.y - m_panelH, cursor.x, cursor.y };   // above the tray
     int x = frc.right + 12;
     if (x + m_panelW > mi.rcWork.right) x = frc.left - 12 - m_panelW;
     x = clampi(x, mi.rcWork.left, (std::max)(mi.rcWork.left, mi.rcWork.right - m_panelW));
@@ -154,7 +170,11 @@ void SettingsPanel::Repaint() {
 }
 
 void SettingsPanel::ApplyToFence() {
-    if (!m_fence) return;
+    if (!m_fence) {   // defaults mode: store the edited look for new fences
+        Presets::SetDefault(m_defaults);
+        Config::MarkDirty();
+        return;
+    }
     m_fence->GetRender().RebuildStyles();
     m_fence->SyncCollapsedSize();
     m_fence->Redraw();

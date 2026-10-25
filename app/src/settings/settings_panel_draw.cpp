@@ -37,10 +37,11 @@ void SettingsPanel::DrawHoverRing(const RECT& rc, int hitId) {
 }
 
 // Caption above a control, and the value shown at the right end of that line.
-void SettingsPanel::DrawLabel(const std::wstring& text, float y) {
+void SettingsPanel::DrawLabel(const std::wstring& text, float y, float x) {
     float s = m_s;
+    if (x < 0) x = 20 * s;
     m_render->Target()->DrawText(text.c_str(), (UINT32)text.size(), m_fmtLabel.Get(),
-        D2D1_RECT_F{ 20 * s, y, 220 * s, y + 18 * s }, m_brText2.Get());
+        D2D1_RECT_F{ x, y, x + 300 * s, y + 18 * s }, m_brText2.Get());
 }
 
 void SettingsPanel::DrawValueRight(const std::wstring& text, float y) {
@@ -54,7 +55,7 @@ void SettingsPanel::DrawPanel() {
     if (!m_render->Target()) return;
     m_render->BeginDraw();
 
-    const FenceAppearance& app = m_fence->GetRender().Appearance();
+    const FenceAppearance& app = App();
     DrawSurface();
     DrawHeader();
     DrawFontList();
@@ -71,8 +72,27 @@ void SettingsPanel::DrawPanel() {
     DrawSegments(L10n::Tr("settings.fill_direction"), m_fillDirLblY,
                  { L10n::Tr("settings.fill.horizontal"), L10n::Tr("settings.fill.vertical") },
                  m_fillDirSeg, app.fillDir, HIT_FILLDIR0);
+    DrawSegments(L10n::Tr("settings.auto_fit"), m_autoFitLblY,
+                 { L10n::Tr("settings.on"), L10n::Tr("settings.off") },
+                 m_autoFitSeg, app.autoReflow ? 0 : 1, HIT_AUTOFIT0);
+    DrawSegments(L10n::Tr("settings.collapse_style"), m_collapseLblY,
+                 { L10n::Tr("settings.collapse.bar"), L10n::Tr("settings.collapse.icon") },
+                 m_collapseSeg, app.collapseStyle, HIT_COLLAPSE0);
+    DrawSegments(L10n::Tr("settings.title_icon"), m_titleIconLblY,
+                 { L10n::Tr("settings.off"), L10n::Tr("settings.on") },
+                 m_titleIconSeg, app.titleIcon ? 1 : 0, HIT_TITLEICON0);
+    int iconSource = 0;
+    if (app.iconPath[0]) {
+        DWORD attrs = GetFileAttributesW(app.iconPath);
+        iconSource = (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) ? 2 : 1;
+    }
+    DrawSegments(L10n::Tr("settings.icon_source"), m_iconPickLblY,
+                 { L10n::Tr("settings.icon.folder"), L10n::Tr("settings.icon.file"),
+                   L10n::Tr("settings.icon.folder_pick") },
+                 m_iconPickSeg, iconSource, HIT_ICONPICK0);
     DrawTitleHeightStepper(app);
     DrawDeleteButton();
+    DrawPresetsButton();
 
     m_render->EndDraw();
 }
@@ -89,11 +109,13 @@ void SettingsPanel::DrawSurface() {
     t->FillRoundedRectangle(rr, m_brTint.Get());
     t->FillRectangle(D2D1_RECT_F{ 0, 0, W, 1.5f * s }, m_brHighlight.Get());
     t->DrawRoundedRectangle(rr, m_brBorder.Get(), 1.0f);
+    // Divider between the two columns.
+    t->FillRectangle(D2D1_RECT_F{ 355 * s, 52 * s, 356 * s, H - 16 * s }, m_brBorder.Get());
 }
 
 void SettingsPanel::DrawHeader() {
     float s = m_s, W = (float)m_panelW;
-    DrawString(L10n::Tr("settings.title"),
+    DrawString(L10n::Tr(m_fence ? "settings.title" : "settings.defaults_title"),
                RECT{ (LONG)(20 * s), 0, (LONG)(W - 40 * s), (LONG)(44 * s) },
                m_fmtHeader.Get(), m_brText.Get());
     if (m_hover == HIT_CLOSE) FillRounded(m_closeBtn, 6 * s, m_brHover.Get());
@@ -213,7 +235,7 @@ void SettingsPanel::DrawColorSwatches(const FenceAppearance& app) {
 void SettingsPanel::DrawSegments(const wchar_t* caption, float labelY,
                                  std::initializer_list<const wchar_t*> labels,
                                  const RECT* rects, int active, int hitBase) {
-    DrawLabel(caption, labelY);
+    DrawLabel(caption, labelY, (float)rects[0].left);
     int i = 0;
     for (const wchar_t* label : labels) {
         bool isActive = (active == i);
@@ -237,10 +259,19 @@ void SettingsPanel::DrawTitleHeightStepper(const FenceAppearance& app) {
     DrawString(std::to_wstring(value), valueRect, m_fmtCenter.Get(), m_brText.Get());
 }
 
-void SettingsPanel::DrawDeleteButton() {
-    float s = m_s, W = (float)m_panelW;
-    D2D1_RECT_F sep{ 20 * s, m_sepY, W - 20 * s, m_sepY + 1 * s };
+void SettingsPanel::DrawPresetsButton() {
+    float s = m_s;
+    D2D1_RECT_F sep{ m_presetsBtn.left * 1.0f, m_sepY, m_presetsBtn.right * 1.0f, m_sepY + 1 * s };
     m_render->Target()->FillRectangle(sep, m_brBorder.Get());
+    FillRounded(m_presetsBtn, 8 * s, m_brField.Get());
+    DrawHoverRing(m_presetsBtn, HIT_PRESETS);
+    DrawString(std::wstring(L10n::Tr("settings.presets")) + L"  \u25BE", m_presetsBtn,
+               m_fmtCenter.Get(), m_brText.Get());
+}
+
+void SettingsPanel::DrawDeleteButton() {
+    if (!m_fence) return;
+    float s = m_s;
     FillRounded(m_deleteBtn, 8 * s, m_brDanger.Get());
     if (m_hover == HIT_DELETE_FENCE) FillRounded(m_deleteBtn, 8 * s, m_brHover.Get());
     DrawString(L10n::Tr("settings.delete_fence"), m_deleteBtn, m_fmtCenter.Get(), m_brThumb.Get());

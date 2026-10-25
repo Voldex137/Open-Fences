@@ -1,6 +1,7 @@
 #include "fence/fence_manager.h"
 #include "core/config.h"
 #include "core/localization.h"
+#include "core/presets.h"
 #include "shell/desktop_host.h"
 #include "shell/desktop_icons.h"
 
@@ -37,6 +38,7 @@ FenceWindow* CreateNew() {
                     (int)(100 * s), (int)(100 * s), (int)(300 * s), (int)(220 * s) };
     g_fences.push_back(std::make_unique<FenceWindow>(data));
     FenceWindow* fence = g_fences.back().get();
+    if (Presets::HasDefault()) fence->ApplyStyle(Presets::Default());
     DesktopIcons::ParkIfHidden(fence->Hwnd());
     Config::MarkDirty();
     return fence;
