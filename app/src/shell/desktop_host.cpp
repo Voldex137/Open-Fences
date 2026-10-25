@@ -8,6 +8,24 @@ typedef DPI_AWARENESS_CONTEXT (WINAPI *SetThreadDpiCtxT)(DPI_AWARENESS_CONTEXT);
 
 namespace Desktop {
 
+void EnableDpiAwareness() {
+    HMODULE u32 = GetModuleHandleW(L"user32.dll");
+    if (u32) {
+        typedef BOOL (WINAPI* SetCtxT)(HANDLE);
+        auto setCtx = (SetCtxT)(void*)GetProcAddress(u32, "SetProcessDpiAwarenessContext");
+        if (setCtx && setCtx((HANDLE)-4 /* DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 */)) return;
+    }
+    HMODULE shcore = LoadLibraryW(L"shcore.dll");
+    if (shcore) {
+        typedef HRESULT (WINAPI* SetDpiAwarenessT)(int);
+        auto setAwareness = (SetDpiAwarenessT)(void*)GetProcAddress(shcore, "SetProcessDpiAwareness");
+        HRESULT hr = setAwareness ? setAwareness(2 /* PROCESS_SYSTEM_DPI_AWARE */) : E_FAIL;
+        FreeLibrary(shcore);
+        if (SUCCEEDED(hr)) return;
+    }
+    SetProcessDPIAware();
+}
+
 float DpiScale() {
     HDC h = GetDC(nullptr);
     int d = GetDeviceCaps(h, LOGPIXELSX);

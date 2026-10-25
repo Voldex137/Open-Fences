@@ -4,6 +4,10 @@ Fixed ones are kept as a record. Newest first.
 
 ## Fixed
 
+- **Duplicate fence ids:** a new fence got the id "f<count + 1>", which repeats an existing id after a fence in
+  the middle was deleted. It now takes the smallest unused number.
+- **Dead code in main.cpp:** `ScanAndConstrainIcons` (cross-process icon moving that the author had disabled
+  because it can deadlock explorer) and its timer branch are removed.
 - **Untranslated UI strings in the renderer:** "Search…", "Loading…" and "No results" were hard-coded English;
   they are localization keys now (`fence.search_hint`, `fence.loading`, `fence.no_results`).
 - **Icon extraction for rows outside the viewport:** list mode loaded the shell icon of every row, including rows

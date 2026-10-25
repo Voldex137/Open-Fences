@@ -9,6 +9,14 @@ namespace Desktop {
 // shell, or Progman when there is no icon list. Null when explorer is not up.
 HWND FindIconListHost();
 
+// Makes the process DPI aware, preferring Per-Monitor V2. Without it Windows
+// virtualizes the process at 96 DPI on scaled displays and bitmap-upscales every
+// window (blurry icons and text at 125% / 150%). Per-Monitor V2 is also the
+// awareness context explorer's Progman runs with, and CreateWindowExW refuses to
+// create a WS_CHILD whose context differs from the parent's. Call before any
+// window is created.
+void EnableDpiAwareness();
+
 // Process DPI scale factor (1.0 at 96 DPI). The process is DPI aware.
 float DpiScale();
 

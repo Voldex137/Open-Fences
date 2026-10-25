@@ -1,5 +1,6 @@
 #include "core/config.h"
 #include "fence/fence_window.h"
+#include "fence/fence_manager.h"
 #include "core/localization.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
@@ -11,8 +12,6 @@
 using json = nlohmann::json;
 
 // App state owned by main.cpp — serialized here on save, rebuilt on load.
-extern std::vector<std::unique_ptr<FenceWindow>> g_fences;
-extern bool g_allHidden;
 
 namespace {
 
@@ -139,7 +138,7 @@ void LoadFence(const json& jf) {
     // so ToggleCollapse remembers the right m_expandedH.
     if (jf.value("collapsed", false)) f->ToggleCollapse();
 
-    g_fences.push_back(std::move(f));
+    FenceManager::Add(std::move(f));
 }
 
 } // namespace
@@ -159,9 +158,9 @@ bool SaveNow() {
     json j;
     j["version"]  = 1;
     j["language"] = ToUtf8(L10n::CurrentCode());
-    j["hideAll"]  = g_allHidden;
+    j["hideAll"]  = FenceManager::AllHidden();
     json fences = json::array();
-    for (const auto& f : g_fences)
+    for (const auto& f : FenceManager::All())
         fences.push_back(SaveFence(*f));
     j["fences"] = std::move(fences);
     // Indented on purpose: the tray menu invites users to open this file.
@@ -231,9 +230,7 @@ bool LoadApp() {
 
     // An empty array is a legitimate state (the user deleted every fence) —
     // only a MISSING file triggers the defaults, so honor it.
-    g_allHidden = j.value("hideAll", false);
-    if (g_allHidden)
-        for (auto& f : g_fences) f->Hide();
+    if (j.value("hideAll", false)) FenceManager::SetAllHidden(true);
     return true;
 }
 
