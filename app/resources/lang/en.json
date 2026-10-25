@@ -28,6 +28,10 @@
   "fence.sort.ascending": "Ascending",
   "fence.sort.descending": "Descending",
 
+  "fence.search_hint": "Search…",
+  "fence.loading": "Loading…",
+  "fence.no_results": "No results",
+
   "dialog.map_folder.title": "Map Folder",
   "dialog.map_folder.confirm": "Mapping a folder will clear the current fence contents. Continue?",
 

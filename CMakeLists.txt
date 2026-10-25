@@ -54,6 +54,7 @@ add_executable(openfences
     app/src/fence/fence_drop_target.cpp
     app/src/menu/shell_context_menu.cpp
     app/src/render/render.cpp
+    app/src/render/render_draw.cpp
     app/src/settings/settings_panel.cpp
     app/src/menu/context_menu.cpp
     app/src/render/icon_extract.cpp

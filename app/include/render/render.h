@@ -148,6 +148,24 @@ private:
     // Wrap premultiplied BGRA pixels (96 DPI) into a D2D bitmap.
     ComPtr<ID2D1Bitmap> MakeBitmapFromPixels(const BYTE* bgra, int w, int h);
 
+    // One frame, split into painting steps (render_draw.cpp).
+    struct Frame;
+    struct IconMetrics;
+    struct IconState;
+    void DrawCollapsedFence(const Frame& f);
+    void DrawTitleBar(const Frame& f);
+    void DrawTopHighlight(const Frame& f);
+    void DrawTitleText(const Frame& f);
+    void DrawChevron(const Frame& f, bool collapsedLook);
+    float DrawSearchBox(const Frame& f);          // returns the top of the body below it
+    void DrawBodyNotice(const Frame& f, float bodyTop, const wchar_t* text);
+    void DrawIcons(const Frame& f, float bodyTop);
+    void DrawListRow(const Frame& f, int i, float bodyTop, const IconMetrics& m, const IconState& st);
+    void DrawGridCell(const Frame& f, int i, const IconMetrics& m, const IconState& st);
+    void DrawListScrollbar(const Frame& f, float bodyTop);
+    void DrawMarquee(const Frame& f);
+    void DrawDragOverAccent(const Frame& f);
+
     float m_dpiX = 96.0f;
     float m_dpiY = 96.0f;
 

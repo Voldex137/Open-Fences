@@ -28,6 +28,10 @@
   "fence.sort.ascending": "По возрастанию",
   "fence.sort.descending": "По убыванию",
 
+  "fence.search_hint": "Поиск…",
+  "fence.loading": "Загрузка…",
+  "fence.no_results": "Ничего не найдено",
+
   "dialog.map_folder.title": "Привязка папки",
   "dialog.map_folder.confirm": "При привязке папки текущее содержимое ограждения будет очищено. Продолжить?",
 

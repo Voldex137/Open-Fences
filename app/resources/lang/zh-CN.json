@@ -28,6 +28,10 @@
   "fence.sort.ascending": "升序",
   "fence.sort.descending": "降序",
 
+  "fence.search_hint": "搜索…",
+  "fence.loading": "加载中…",
+  "fence.no_results": "无结果",
+
   "dialog.map_folder.title": "映射文件夹",
   "dialog.map_folder.confirm": "映射文件夹将清空当前围栏内的内容，是否继续？",
 

@@ -1,5 +1,5 @@
 #include "fence/fence_window.h"
-#include "fence/fence_metrics.h"
+#include "core/layout_metrics.h"
 #include "shell/desktop_host.h"
 #include "core/config.h"
 #include <algorithm>
