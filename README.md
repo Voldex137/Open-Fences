@@ -56,24 +56,15 @@ Output: `build/Release/openfences.exe` (~780 KB, statically linked CRT).
 
 ```
 openFences/
-├── CMakeLists.txt             # CMake build configuration
-├── src/                       # the application
-│   ├── main.cpp               # entry point, tray, desktop management
-│   ├── fence_window.cpp       # fence window (create / drag / resize)
-│   ├── render.cpp             # Direct2D rendering (frosted glass / Acrylic)
-│   ├── context_menu.cpp       # Windows 11 Fluent custom context menu
-│   ├── settings_panel.cpp     # appearance settings panel
-│   ├── config.cpp             # JSON config, autostart
-│   ├── icon_extract.cpp       # icon extraction
-│   ├── menu_icons.cpp         # vector menu icons rasterised in code
-│   ├── explorer_sort.cpp      # desktop sort-order handling
-│   └── resource.h             # resource IDs
-├── resources/app.ico          # application icon (replaceable)
-├── resources/lang/            # one JSON file per UI language
-├── tests/                     # unit tests (localization)
+├── CMakeLists.txt
+├── app/                       # the application
+│   ├── include/               # headers
+│   ├── src/                   # sources (main.cpp, fence_window.cpp, render.cpp, ...)
+│   └── resources/             # app.ico, lang/*.json (one file per UI language)
 ├── tools/                     # research spikes and diagnostics (off by default)
+├── tests/                     # unit tests (localization)
 ├── experiments/legacy-hook/   # unused DLL from an early design
-├── docs/                      # design notes (CPP_DESIGN.md, DEV_PLAN.md)
+├── docs/                      # design notes, LOCALIZATION.md
 ├── CLAUDE.md                  # development guide for AI assistants
 └── README*.md
 ```

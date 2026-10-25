@@ -48,5 +48,5 @@
 
 ### Fork roadmap (additional)
 - Russian UI via a string table keyed by language
-- Remove committed build artifacts from version control and reorganise the repository (`src/`, `tools/`, `experiments/`, `docs/`) (done in this fork)
+- Remove committed build artifacts from version control and reorganise the repository (`app/`, `tools/`, `tests/`, `experiments/`, `docs/`) (done in this fork)
 - Linux port (upstream issue #8): new rendering/windowing backend, see the README roadmap

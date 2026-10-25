@@ -5,7 +5,7 @@ openFences looks up every user-visible string by **key** in a per-language JSON 
 ## Files
 
 ```
-resources/lang/
+app/resources/lang/
 ├── en.json      English (reference language and fallback)
 ├── ru.json      Русский
 └── zh-CN.json   中文
@@ -29,7 +29,7 @@ Each file looks like this:
 
 ## Adding a language
 
-1. Copy `resources/lang/en.json` to `resources/lang/<code>.json`.
+1. Copy `app/resources/lang/en.json` to `app/resources/lang/<code>.json`.
 2. Set `_meta.code` and `_meta.name`, translate the values (keep the keys unchanged).
 3. Rebuild (CMake picks the new file up automatically) — the file is embedded in `openfences.exe` and the language appears in the tray menu.
 
@@ -48,5 +48,5 @@ To try a translation **without rebuilding**, put the file in `lang\` next to `op
 AppendMenuW(menu, MF_STRING, id, L10n::Tr("tray.exit"));
 ```
 
-`Tr` does not allocate, so it is safe to call while painting. Add the new key to **every** file in `resources/lang`; `tests/l10n_test.cpp` checks that the main keys exist in all languages
+`Tr` does not allocate, so it is safe to call while painting. Add the new key to **every** file in `app/resources/lang`; `tests/l10n_test.cpp` checks that the main keys exist in all languages
 (`cmake -B build -DOPENFENCES_BUILD_TESTS=ON`, then build and run `l10n_test`).

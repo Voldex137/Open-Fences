@@ -23,8 +23,8 @@ FetchContent_Declare(json
 FetchContent_MakeAvailable(json)
 
 # Embed every resources/lang/*.json into the exe as an RCDATA resource named
-# LANG_<NAME>; the loader (src/localization.cpp) enumerates them at startup.
-file(GLOB OPENFENCES_LANG_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/lang/*.json")
+# LANG_<NAME>; the loader (app/src/localization.cpp) enumerates them at startup.
+file(GLOB OPENFENCES_LANG_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/app/resources/lang/*.json")
 set(OPENFENCES_LANG_RC "${CMAKE_CURRENT_BINARY_DIR}/lang_resources.rc")
 set(OPENFENCES_LANG_RC_CONTENT "")
 foreach(lang_file ${OPENFENCES_LANG_FILES})
@@ -38,17 +38,17 @@ file(GENERATE OUTPUT "${OPENFENCES_LANG_RC}" CONTENT "${OPENFENCES_LANG_RC_CONTE
 set_source_files_properties("${OPENFENCES_LANG_RC}" PROPERTIES GENERATED TRUE)
 
 add_executable(openfences
-    src/main.cpp
-    src/fence_window.cpp
-    src/render.cpp
-    src/settings_panel.cpp
-    src/context_menu.cpp
-    src/icon_extract.cpp
-    src/menu_icons.cpp
-    src/config.cpp
-    src/localization.cpp
-    src/explorer_sort.cpp
-    src/app.rc
+    app/src/main.cpp
+    app/src/fence_window.cpp
+    app/src/render.cpp
+    app/src/settings_panel.cpp
+    app/src/context_menu.cpp
+    app/src/icon_extract.cpp
+    app/src/menu_icons.cpp
+    app/src/config.cpp
+    app/src/localization.cpp
+    app/src/explorer_sort.cpp
+    app/src/app.rc
     ${OPENFENCES_LANG_RC}
 )
 
@@ -57,9 +57,9 @@ add_executable(openfences
 # process as pre-Windows-8 and refuses to create WS_EX_LAYERED child windows,
 # which the Progman-hosted fence windows are.
 target_link_options(openfences PRIVATE
-    "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
+    "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app/src/app.manifest")
 
-target_include_directories(openfences PRIVATE src)
+target_include_directories(openfences PRIVATE app/include)
 target_link_libraries(openfences PRIVATE
     d2d1 dwrite windowscodecs
     ole32 shlwapi shell32 comctl32 comdlg32
@@ -75,7 +75,8 @@ if(OPENFENCES_BUILD_TOOLS)
     add_executable(diag tools/desktop_diag.cpp)
     target_link_libraries(diag PRIVATE user32 comctl32)
 
-    add_executable(icon_diag tools/icon_diag.cpp src/icon_extract.cpp)
+    add_executable(icon_diag tools/icon_diag.cpp app/src/icon_extract.cpp)
+    target_include_directories(icon_diag PRIVATE app/include)
     target_link_libraries(icon_diag PRIVATE user32 shell32 shlwapi ole32 uuid comctl32)
 
     add_executable(region_spike tools/region_spike.cpp)
@@ -83,14 +84,14 @@ if(OPENFENCES_BUILD_TOOLS)
     # Layered CHILD windows (the fence analogue probed here) only exist on Win8+;
     # without the supportedOS manifest CreateWindowExW(WS_EX_LAYERED, WS_CHILD) fails.
     target_link_options(region_spike PRIVATE
-        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app/src/app.manifest")
 
     add_executable(ctxmenu_spike tools/ctxmenu_spike.cpp)
     target_link_libraries(ctxmenu_spike PRIVATE user32 shell32 shlwapi ole32 uuid)
     # Same supportedOS manifest as the app: without it the process is shimmed to
     # pre-Windows-8 and the shell hides IExplorerCommandProvider (a Win8+ interface).
     target_link_options(ctxmenu_spike PRIVATE
-        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/app/src/app.manifest")
 
     add_executable(vis_probe tools/vis_probe.cpp)
     target_link_libraries(vis_probe PRIVATE user32 shell32 advapi32)
@@ -100,12 +101,12 @@ endif()
 option(OPENFENCES_BUILD_TESTS "Build the tests in tests/" OFF)
 if(OPENFENCES_BUILD_TESTS)
     enable_testing()
-    add_executable(l10n_test tests/l10n_test.cpp src/localization.cpp)
-    target_include_directories(l10n_test PRIVATE src)
+    add_executable(l10n_test tests/l10n_test.cpp app/src/localization.cpp)
+    target_include_directories(l10n_test PRIVATE app/include)
     target_link_libraries(l10n_test PRIVATE shell32 nlohmann_json::nlohmann_json)
     # The loader also reads "<exe dir>\lang\*.json", so the test needs no embedded resources.
     add_custom_command(TARGET l10n_test POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
-                "${CMAKE_CURRENT_SOURCE_DIR}/resources/lang" "$<TARGET_FILE_DIR:l10n_test>/lang")
+                "${CMAKE_CURRENT_SOURCE_DIR}/app/resources/lang" "$<TARGET_FILE_DIR:l10n_test>/lang")
     add_test(NAME l10n COMMAND l10n_test)
 endif()

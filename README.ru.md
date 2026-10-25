@@ -56,24 +56,15 @@ cmake --build build --config Release --target openfences
 
 ```
 openFences/
-├── CMakeLists.txt             # настройки сборки CMake
-├── src/                       # приложение
-│   ├── main.cpp               # точка входа, трей, управление рабочим столом
-│   ├── fence_window.cpp       # окно ограждения (создание / перетаскивание / размер)
-│   ├── render.cpp             # отрисовка Direct2D (матовое стекло / Acrylic)
-│   ├── context_menu.cpp       # контекстное меню Fluent в стиле Windows 11
-│   ├── settings_panel.cpp     # панель настроек внешнего вида
-│   ├── config.cpp             # JSON-конфиг, автозапуск
-│   ├── icon_extract.cpp       # извлечение значков
-│   ├── menu_icons.cpp         # векторные значки меню, растеризуются в коде
-│   ├── explorer_sort.cpp      # работа с порядком сортировки рабочего стола
-│   └── resource.h             # идентификаторы ресурсов
-├── resources/app.ico          # значок приложения (можно заменить)
-├── resources/lang/            # по одному JSON-файлу на язык интерфейса
-├── tests/                     # модульные тесты (локализация)
+├── CMakeLists.txt
+├── app/                       # приложение
+│   ├── include/               # заголовочные файлы
+│   ├── src/                   # исходники (main.cpp, fence_window.cpp, render.cpp, ...)
+│   └── resources/             # app.ico, lang/*.json (по файлу на язык интерфейса)
 ├── tools/                     # исследовательские спайки и диагностика (по умолчанию не собираются)
+├── tests/                     # модульные тесты (локализация)
 ├── experiments/legacy-hook/   # неиспользуемая DLL из раннего замысла
-├── docs/                      # проектные заметки (CPP_DESIGN.md, DEV_PLAN.md)
+├── docs/                      # проектные заметки, LOCALIZATION.md
 ├── CLAUDE.md                  # руководство для ИИ-ассистентов
 └── README*.md
 ```

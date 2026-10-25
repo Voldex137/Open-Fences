@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
-#include "src/icon_extract.h"
+#include "icon_extract.h"
 
 static void PutW(const wchar_t* s) {
     char buf[1024];
