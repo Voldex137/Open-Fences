@@ -1,8 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"D:/person/openFences/cpp/build/cmake_install.cmake",
-		"D:/person/openFences/cpp/build/_deps/json-build/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

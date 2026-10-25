@@ -1,1 +1,15 @@
 /target
+
+# Build output (CMake, MSVC)
+build/
+**/build/
+*.exe
+*.dll
+*.pdb
+*.ilk
+*.obj
+*.exp
+*.lib
+*.tlog
+.vs/
+CMakeUserPresets.json
