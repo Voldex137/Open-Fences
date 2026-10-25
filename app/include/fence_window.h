@@ -114,6 +114,31 @@ public:
     static const wchar_t* ClassName() { return L"OpenFencesFence"; }
 
 private:
+    // Window-message handlers, dispatched from WndProc.
+    LRESULT OnDropFiles(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnNcHitTest(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnSetCursor(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnSize(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnWindowPosChanged(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnNcLButtonDown(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnLButtonDown(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnMouseMove(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnCaptureChanged(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnMouseLeave(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnLButtonDblClk(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnRButtonUp(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnMouseWheel(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnChar(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnKeyDown(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnKillFocus(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnTimer(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnFenceRefresh(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnShowWindow(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnFenceReshow(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnSysCommand(UINT msg, WPARAM wp, LPARAM lp);
+    LRESULT OnDestroy(UINT msg, WPARAM wp, LPARAM lp);
+
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
     void CaptureBackdrop();   // re-snapshot the desktop behind the fence
     int  HitTestIcon(int mx, int my) const;   // → icon index or -1

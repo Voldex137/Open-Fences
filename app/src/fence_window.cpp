@@ -1032,6 +1032,962 @@ void FenceWindow::RegisterClass(HINSTANCE hInst) {
     RegisterClassExW(&wc);
 }
 
+LRESULT FenceWindow::OnDropFiles(UINT msg, WPARAM wp, LPARAM lp)     {
+    HDROP hdrop = (HDROP)wp;
+    SetDragOver(false);
+
+    POINT dropPt = {};
+    DragQueryPoint(hdrop, &dropPt);
+    float dx = (float)dropPt.x, dy = (float)dropPt.y;
+
+    UINT count = DragQueryFileW(hdrop, 0xFFFFFFFF, nullptr, 0);
+    for (UINT i = 0; i < count; i++) {
+        WCHAR path[MAX_PATH];
+        if (DragQueryFileW(hdrop, i, path, MAX_PATH)) {
+            WCHAR display[MAX_PATH];
+            wcscpy_s(display, PathFindFileNameW(path));
+            PathRemoveExtensionW(display);
+            if (display[0])
+                AddIcon(display, path, dx, dy);
+        }
+    }
+    DragFinish(hdrop);
+    return 0;
+}
+
+LRESULT FenceWindow::OnNcHitTest(UINT msg, WPARAM wp, LPARAM lp)     {
+    POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+    ScreenToClient(m_hwnd, &pt);
+    return EdgeHit(m_hwnd, m_collapsed, pt.x, pt.y);
+}
+
+LRESULT FenceWindow::OnSetCursor(UINT msg, WPARAM wp, LPARAM lp)     {
+    // A fence is a layered child of *another process's* desktop list, so
+    // the usual cursor plumbing (class cursor applied through the parent
+    // chain) never reaches it — without this the pointer keeps whatever
+    // shape it had before entering. Recompute the hit from the live
+    // cursor position: during a resize drag the pointer can leave the
+    // edge zone, and we still want the sizing shape in that case.
+    if (this) {
+        int ht = m_resizeMask
+            ? m_resizeHT
+            : [&] { POINT p; GetCursorPos(&p); ScreenToClient(m_hwnd, &p);
+                    return EdgeHit(m_hwnd, m_collapsed, p.x, p.y); }();
+        SetCursor(LoadCursorW(nullptr, CursorForHT(ht)));
+        return TRUE;
+    }
+    return DefWindowProcW(m_hwnd, msg, wp, lp);
+}
+
+LRESULT FenceWindow::OnSize(UINT msg, WPARAM wp, LPARAM lp)     {
+    UINT w = LOWORD(lp), h = HIWORD(lp);
+    if (w > 0 && h > 0 && (w != m_render->Width() || h != m_render->Height())) {
+        m_render->Resize(w, h);
+        // Re-seat the icons on the resized grid (also resolves overlaps
+        // when the fence shrinks). Skip while collapsing: the tiny height
+        // would crush every icon's row and the layout would be lost on
+        // expand. RelayoutIcons redraws on its own.
+        if (!m_collapsed) RelayoutIcons();
+        else                    Redraw();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnWindowPosChanged(UINT msg, WPARAM wp, LPARAM lp)     {
+    if (this) {
+        RECT wr; GetWindowRect(m_hwnd, &wr);
+        m_x = wr.left;
+        m_y = wr.top;
+        // Re-snapshot the frosted-glass backdrop shortly after the
+        // window settles. SetTimer resets the countdown, so a continuous
+        // move/resize only triggers one capture once it stops.
+        SetTimer(m_hwnd, 2, 150, nullptr);
+    }
+    return DefWindowProcW(m_hwnd, msg, wp, lp);
+}
+
+LRESULT FenceWindow::OnNcLButtonDown(UINT msg, WPARAM wp, LPARAM lp)     {
+    // Edge resize. DefWindowProc's size loop only works for top-level
+    // windows, so for our desktop-child fences we run it manually:
+    // remember the starting rect/cursor and follow WM_MOUSEMOVE.
+    int code = (int)wp;
+    if (code >= HTLEFT && code <= HTBOTTOMRIGHT) {
+        int mask = 0;
+        if (code == HTLEFT || code == HTTOPLEFT || code == HTBOTTOMLEFT)      mask |= 1;
+        if (code == HTRIGHT || code == HTTOPRIGHT || code == HTBOTTOMRIGHT)   mask |= 2;
+        if (code == HTTOP || code == HTTOPLEFT || code == HTTOPRIGHT)         mask |= 4;
+        if (code == HTBOTTOM || code == HTBOTTOMLEFT || code == HTBOTTOMRIGHT) mask |= 8;
+        POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };   // screen coords
+        RECT wr; GetWindowRect(m_hwnd, &wr);
+        HWND parent = GetParent(m_hwnd);
+        if (parent) {                   // screen → parent-client
+            ScreenToClient(parent, &pt);
+            POINT a{ wr.left, wr.top }, b{ wr.right, wr.bottom };
+            ScreenToClient(parent, &a);
+            ScreenToClient(parent, &b);
+            wr = { a.x, a.y, b.x, b.y };
+        }
+        m_resizeMask = mask;
+        m_resizeHT = code;      // keep this sizing shape for the drag
+        m_resizeStart = wr;
+        m_resizePtX = pt.x;
+        m_resizePtY = pt.y;
+        SetCapture(m_hwnd);
+        SetCursor(LoadCursorW(nullptr, CursorForHT(code)));
+        return 0;
+    }
+    return DefWindowProcW(m_hwnd, msg, wp, lp);
+}
+
+LRESULT FenceWindow::OnLButtonDown(UINT msg, WPARAM wp, LPARAM lp)     {
+    int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
+
+    // List-mode scrollbar hit test (before icon/chevron/move handling)
+    float maxS = ListMaxScroll();
+    if (maxS > 0) {
+        const auto& app = m_render->Appearance();
+        float bt = ContentTop();
+        float w = (float)m_render->Width();
+        float h = (float)m_render->Height();
+        float rowH = app.iconSize * 2.6f;
+        float sbW = 6.0f, sbPad = 2.0f;
+        float trackX = w - sbW - sbPad;
+        if ((float)mx >= trackX && (float)my >= bt) {
+            float trackH = h - bt - sbPad * 2;
+            float totalH = (float)VisibleCount() * rowH;
+            float contentH = h - bt;
+            float thumbH = (std::max)(20.0f, trackH * contentH / totalH);
+            float thumbY = bt + sbPad + (m_listScroll / maxS) * (trackH - thumbH);
+            if ((float)my < thumbY) {
+                m_listScroll -= contentH;
+                ClampListScroll();
+                Redraw();
+                return 0;
+            } else if ((float)my > thumbY + thumbH) {
+                m_listScroll += contentH;
+                ClampListScroll();
+                Redraw();
+                return 0;
+            } else {
+                m_scrollbarDrag = true;
+                m_scrollDragStartY = (float)my;
+                m_scrollDragStartOffset = m_listScroll;
+                SetCapture(m_hwnd);
+                return 0;
+            }
+        }
+    }
+
+    // A click anywhere outside the renaming icon's label commits the
+    // rename first (Explorer behavior), then the click acts normally.
+    if (m_renameIcon >= 0 && HitTestIcon(mx, my) != m_renameIcon)
+        ExitIconRename(true);
+
+    if (!m_renaming && my < (int)m_render->Appearance().titleH) {
+        // Top-right corner of the title bar = collapse/expand arrow.
+        int arrowL = (int)(m_render->Width() - m_render->Appearance().titleH);
+        if (mx >= arrowL) {
+            m_chevronDown = true;
+            m_chevronHover = true;
+            SetCapture(m_hwnd);
+            Redraw();
+            return 0;
+        }
+        // Rest of the title bar → drag the whole fence. Manual capture
+        // drag: DefWindowProc's HTCAPTION loop doesn't move child windows.
+        m_moveOffX = mx;
+        m_moveOffY = my;
+        m_moving = true;
+        SetCapture(m_hwnd);
+        return 0;
+    }
+    // Search-box strip (mapped fences): focus the box on click, consume the event
+    if (!m_renaming && IsMapped() &&
+        my >= (int)m_render->Appearance().titleH &&
+        my < (int)ContentTop()) {
+        FocusSearch();
+        return 0;
+    }
+    // Icon → select it and arm a drag inside the fence
+    int hit = HitTestIcon(mx, my);
+    if (hit >= 0) {
+        std::wstring pressedPath = m_icons[hit].path;
+        // Explorer selection rule: pressing an already-selected icon
+        // keeps the multi-selection (the whole group will drag
+        // together); pressing any other icon collapses it to a single.
+        if (!IsPathSelected(pressedPath)) SelectOnly(hit);
+        // Bring the WHOLE selection to the front so it draws above the
+        // rest while dragging. That reorders the vector, so re-locate
+        // every index by path afterwards.
+        BringSelectedToFront();
+        m_dragGroup.clear();
+        m_dragExcludes.clear();
+        for (int i = 0; i < (int)m_icons.size(); i++) {
+            if (!IsPathSelected(m_icons[i].path)) continue;
+            m_dragGroup.push_back({ i, m_icons[i].x, m_icons[i].y });
+            m_dragExcludes.push_back(i);
+            if (m_icons[i].path == pressedPath) hit = i;
+        }
+        m_hoverIcon = hit;
+        m_dragIcon = hit;         // the pressed icon leads the group
+        m_dragDirX = 0;
+        m_dragMoved = false;      // real drag starts past the
+        m_dragGrabX = mx;         // system drag distance — a plain
+        m_dragGrabY = my;         // click must not disturb anything
+        m_dragHoverCell = CellOf(m_icons[hit]);
+        SetCapture(m_hwnd);
+        Redraw();
+    } else {
+        // Empty body → marquee multi-select (desktop style). The press
+        // arms the band; the click/drag threshold in WM_MOUSEMOVE
+        // decides whether it becomes a plain click (which clears the
+        // selection) or a live rubber band. Ctrl keeps the current
+        // selection and adds to it instead of replacing it.
+        m_marquee = true;
+        m_marqueeMoved = false;
+        m_marqueeAdd = (wp & MK_CONTROL) != 0;
+        if (m_marqueeAdd) {
+            m_marqueeBase = m_selectedPaths;
+        } else {
+            m_marqueeBase.clear();
+            ClearSelection();
+        }
+        m_marqAX = m_marqCX = mx;
+        m_marqAY = m_marqCY = my;
+        SetCapture(m_hwnd);
+        Redraw();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnMouseMove(UINT msg, WPARAM wp, LPARAM lp)     {
+    // Belt and suspenders alongside WM_SETCURSOR: mouse moves are routed
+    // straight to this window, so setting the shape here works even if the
+    // desktop list parent swallows WM_SETCURSOR. lParam is client coords.
+    if (this) {
+        int ht = m_resizeMask
+            ? m_resizeHT
+            : EdgeHit(m_hwnd, m_collapsed, GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
+        SetCursor(LoadCursorW(nullptr, CursorForHT(ht)));
+    }
+    // List-mode scrollbar thumb drag
+    if (m_scrollbarDrag) {
+        float dy = (float)GET_Y_LPARAM(lp) - m_scrollDragStartY;
+        float maxS = ListMaxScroll();
+        if (maxS > 0) {
+            const auto& app = m_render->Appearance();
+            float rowH = app.iconSize * 2.6f;
+            float bt = ContentTop();
+            float h = (float)m_render->Height();
+            float sbPad = 2.0f;
+            float trackH = h - bt - sbPad * 2;
+            float totalH = (float)VisibleCount() * rowH;
+            float contentH = h - bt;
+            float thumbH = (std::max)(20.0f, trackH * contentH / totalH);
+            float range = trackH - thumbH;
+            if (range > 0) {
+                m_listScroll = m_scrollDragStartOffset + (dy / range) * maxS;
+                ClampListScroll();
+                Redraw();
+            }
+        }
+        return 0;
+    }
+
+    // Hover plate (Explorer style). No capture is active in this branch,
+    // so re-arm leave tracking on every move and hit-test the cursor.
+    if (!m_collapsed && !m_moving &&
+        !m_resizeMask && m_dragIcon < 0 && !m_marquee) {
+        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, m_hwnd, 0 };
+        TrackMouseEvent(&tme);
+        int h = HitTestIcon(GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
+        if (h != m_hoverIcon) {
+            m_hoverIcon = h;
+            Redraw();
+        }
+    }
+    // Chevron hover. Works expanded AND collapsed (the arrow is the only
+    // control a collapsed fence has), and also while the button is
+    // pressed — capture keeps the moves coming here, so the plate follows
+    // the cursor on and off the button (under-capture coordinates may be
+    // negative, hence the explicit >= 0 checks).
+    if (!m_renaming && !m_moving &&
+        !m_resizeMask && m_dragIcon < 0 && !m_marquee) {
+        int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
+        int th = (int)m_render->Appearance().titleH;
+        int arrowL = (int)(m_render->Width() - m_render->Appearance().titleH);
+        bool in = my >= 0 && my < th && mx >= arrowL;
+        if (in != m_chevronHover) {
+            m_chevronHover = in;
+            Redraw();
+        }
+    }
+    if (m_marquee) {
+        int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
+        if (!m_marqueeMoved) {
+            // The same click/drag discrimination icon drags use: a press
+            // that never travels the system drag distance stays a plain
+            // click (settled in WM_LBUTTONUP).
+            int t = GetSystemMetrics(SM_CXDRAG);
+            if (abs(mx - m_marqAX) < t && abs(my - m_marqAY) < t)
+                return 0;
+            m_marqueeMoved = true;
+        }
+        m_marqCX = mx;
+        m_marqCY = my;
+        UpdateMarqueeSelection();
+        Redraw();
+        return 0;
+    }
+    if (m_moving) {
+        // Cursor to parent-client coords, keep the grabbed offset
+        POINT p{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+        ClientToScreen(m_hwnd, &p);
+        HWND parent = GetParent(m_hwnd);
+        if (parent) ScreenToClient(parent, &p);
+        SetWindowPos(m_hwnd, nullptr, p.x - m_moveOffX, p.y - m_moveOffY,
+            0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        return 0;
+    }
+    if (m_resizeMask) {
+        POINT p{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+        ClientToScreen(m_hwnd, &p);
+        HWND parent = GetParent(m_hwnd);
+        if (parent) ScreenToClient(parent, &p);
+        int dx = p.x - m_resizePtX;
+        int dy = p.y - m_resizePtY;
+        RECT r = m_resizeStart;
+        if (m_resizeMask & 1) r.left   += dx;
+        if (m_resizeMask & 2) r.right  += dx;
+        if (m_resizeMask & 4) r.top    += dy;
+        if (m_resizeMask & 8) r.bottom += dy;
+        // Enforce a sane minimum so the fence can't vanish
+        int th  = (int)(m_render->Appearance().titleH + 0.5f);
+        int minW = (int)(120.0f * Desktop::DpiScale() + 0.5f);
+        int minH = th + (int)(40.0f * Desktop::DpiScale() + 0.5f);
+        if (r.right - r.left < minW) {
+            if (m_resizeMask & 1) r.left = r.right - minW;
+            else                        r.right = r.left + minW;
+        }
+        if (r.bottom - r.top < minH) {
+            if (m_resizeMask & 4) r.top = r.bottom - minH;
+            else                        r.bottom = r.top + minH;
+        }
+        SetWindowPos(m_hwnd, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        return 0;
+    }
+    if (m_dragIcon >= 0) {
+        int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
+        if (!m_dragMoved) {
+            // Explorer's click/drag discrimination: an icon press only
+            // becomes a drag once the cursor travels the system drag
+            // distance. Until then the icons stay put (click = select).
+            int t = GetSystemMetrics(SM_CXDRAG);
+            if (abs(mx - m_dragGrabX) < t &&
+                abs(my - m_dragGrabY) < t)
+                return 0;
+            m_dragMoved = true;
+            // Stale overlaps under the lifted group resolve at drag
+            // start — squatters are pushed to the nearest free cells.
+            PushGroupOut();
+        }
+        // The whole selection rides ONE shared delta (Explorer group
+        // drag). For a single-icon selection this is exactly the old
+        // offset-follow behavior.
+        float dx = (float)(mx - m_dragGrabX);
+        float dy = (float)(my - m_dragGrabY);
+        for (const auto& d : m_dragGroup) {
+            if (d.idx < 0 || d.idx >= (int)m_icons.size()) continue;
+            float nx = d.x + dx, ny = d.y + dy;
+            ClampIconPos(nx, ny);
+            m_icons[d.idx].x = floorf(nx + 0.5f);   // whole pixels
+            m_icons[d.idx].y = floorf(ny + 0.5f);
+        }
+        // Push-aside: whenever the pressed icon enters a new cell, sweep
+        // every cell the group now covers — bystanders flow out of the
+        // way mid-drag, along the row in the drag's direction.
+        int hovered = CellOf(m_icons[m_dragIcon]);
+        if (hovered != m_dragHoverCell) {
+            FenceWindow::IconGrid g = GetIconGrid();
+            int dc = (hovered % g.cols) - (m_dragHoverCell % g.cols);
+            if (dc != 0) m_dragDirX = dc > 0 ? 1 : -1;
+            m_dragHoverCell = hovered;
+            PushGroupOut();
+        }
+        Redraw();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
+    if (m_scrollbarDrag) {
+        m_scrollbarDrag = false;
+        ReleaseCapture();
+        return 0;
+    }
+    if (m_chevronDown) {
+        m_chevronDown = false;
+        ReleaseCapture();
+        POINT p; GetCursorPos(&p); ScreenToClient(m_hwnd, &p);
+        int th = (int)m_render->Appearance().titleH;
+        int arrowL = (int)(m_render->Width() - m_render->Appearance().titleH);
+        bool inside = p.y >= 0 && p.y < th && p.x >= arrowL;
+        m_chevronHover = inside;
+        if (inside) ToggleCollapse();
+        else        Redraw();
+        return 0;
+    }
+    bool wasBusy = m_dragIcon >= 0 || m_moving ||
+                   m_resizeMask || m_marquee;
+    if (m_marquee) {
+        // A press that never passed the drag threshold was a plain click
+        // on empty ground — the selection was already cleared at press
+        // time (additive mode left it alone). A real sweep keeps the
+        // band's final selection. Either way: drop the band's state.
+        m_marquee = false;
+        m_marqueeMoved = false;
+        m_marqueeAdd = false;
+        m_marqueeBase.clear();
+        Redraw();   // erase the rubber band
+    }
+    if (m_dragIcon >= 0) {
+        // Mouse capture routed every move to the drag path, so the hover
+        // plate is stale — re-derive it from the live cursor before the
+        // settle redraw paints the final frame.
+        POINT p; GetCursorPos(&p); ScreenToClient(m_hwnd, &p);
+        m_hoverIcon = HitTestIcon(p.x, p.y);
+        SettleDragGroup();
+    }
+    bool geomChanged = m_moving || m_resizeMask;
+    m_moving = false;
+    m_resizeMask = 0;
+    if (wasBusy) ReleaseCapture();
+    if (geomChanged) Config::MarkDirty();   // fence moved / resized
+    return 0;
+}
+
+LRESULT FenceWindow::OnCaptureChanged(UINT msg, WPARAM wp, LPARAM lp)     {
+    // Capture stolen mid-gesture: settle the group instead of leaving it
+    // overlapping somebody, and drop any half-drawn rubber band. (Our own
+    // ReleaseCapture in WM_LBUTTONUP gets here with the drag/marquee
+    // state already cleared — no double settle.)
+    if (this) {
+        if (m_chevronDown) {   // press disarmed without a release
+            m_chevronDown = false;
+            Redraw();
+        }
+        if (m_dragIcon >= 0) SettleDragGroup();
+        if (m_marquee) {
+            m_marquee = false;
+            m_marqueeMoved = false;
+            m_marqueeAdd = false;
+            m_marqueeBase.clear();
+            Redraw();
+        }
+        if (m_moving || m_resizeMask) Config::MarkDirty();
+        m_moving = false;
+        m_resizeMask = 0;
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnMouseLeave(UINT msg, WPARAM wp, LPARAM lp)     {
+    // Cursor left the fence: drop the hover states. (While a capture is
+    // active — drag/move/resize/chevron press — leave notifications are
+    // suppressed.)
+    if (m_dragIcon < 0 &&
+        !m_moving && !m_resizeMask && !m_marquee) {
+        bool dirty = false;
+        if (m_hoverIcon >= 0) { m_hoverIcon = -1;       dirty = true; }
+        if (m_chevronHover)   { m_chevronHover = false; dirty = true; }
+        if (dirty) Redraw();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnLButtonDblClk(UINT msg, WPARAM wp, LPARAM lp)     {
+    int mx = GET_X_LPARAM(lp);
+    int my = GET_Y_LPARAM(lp);
+    if (my < (int)m_render->Appearance().titleH) {
+        // Ignore the collapse-arrow box so it doesn't trigger a rename
+        int arrowL = (int)(m_render->Width() - m_render->Appearance().titleH);
+        if (mx >= arrowL) return 0;
+        EnterRename();
+        return 0;
+    }
+    // Search-box strip: no action on double-click
+    if (IsMapped() && my < (int)ContentTop()) return 0;
+    // Double-click on an icon → open it
+    int hit = HitTestIcon(mx, my);
+    if (hit >= 0) {
+        ShellExecuteW(m_hwnd, L"open", m_icons[hit].path.c_str(),
+                      nullptr, nullptr, SW_SHOW);
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnRButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
+    POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+    ClientToScreen(m_hwnd, &pt);
+    POINT cli{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+
+    // Detect which icon was clicked (same geometry as rendering)
+    int iconHit = -1;
+    if (!m_icons.empty())
+        iconHit = HitTestIcon(cli.x, cli.y);
+
+    // Right-click selects too, so the menu appears over the selection
+    // plate exactly like the Explorer desktop. A press on an icon that is
+    // ALREADY selected keeps the whole multi-selection (Explorer keeps the
+    // group intact so the menu verbs apply to every member); otherwise
+    // the selection collapses to the pressed icon.
+    if (iconHit >= 0) {
+        if (!IsPathSelected(m_icons[iconHit].path))
+            SelectOnly(iconHit);
+        m_hoverIcon = iconHit;
+        Redraw();
+    }
+
+    // Remove icon `idx`, repairing selection/hover bookkeeping.
+    auto eraseIcon = [&](int idx) {
+        if (idx < 0 || idx >= (int)m_icons.size()) return;
+        // Drop the removed path from the selection set so no entry
+        // dangles pointing at a dead icon.
+        auto& sel = m_selectedPaths;
+        sel.erase(std::remove(sel.begin(), sel.end(), m_icons[idx].path),
+                  sel.end());
+        m_icons.erase(m_icons.begin() + idx);
+        if (m_hoverIcon == idx)      m_hoverIcon = -1;
+        else if (m_hoverIcon > idx)  m_hoverIcon--;
+        if (SearchActive()) RebuildFilter();
+        Redraw();
+        Config::MarkDirty();
+    };
+
+    // Icon → show the real Explorer context menu (Open / Cut / Copy /
+    // Delete / Properties …) with our fence-only verb appended.
+    if (iconHit >= 0) {
+        bool invoked = false, removeChosen = false, renameChosen = false;
+        if (ShellMenu::RunForPath(m_hwnd, m_icons[iconHit].path,
+                                m_icons[iconHit].name, pt,
+                                invoked, removeChosen, renameChosen)) {
+            if (renameChosen) {
+                // Rename right here in the fence instead of letting the
+                // shell rename the desktop/Explorer copy.
+                SelectOnly(iconHit);
+                EnterIconRename(iconHit);
+            } else if (removeChosen) {
+                eraseIcon(iconHit);
+            } else if (invoked) {
+                // If the shell command got rid of the file (e.g. Delete),
+                // don't leave a dangling icon behind in the fence.
+                if (GetFileAttributesW(m_icons[iconHit].path.c_str())
+                        == INVALID_FILE_ATTRIBUTES)
+                    eraseIcon(iconHit);
+            }
+            return 0;
+        }
+        // Shell menu unavailable — fall through to the fence menu below.
+    }
+
+    // Fence-level menu (background, or fallback when the shell menu fails)
+    HMENU menu = CreatePopupMenu();
+    if (iconHit >= 0) {
+        std::wstring rm = std::wstring(L10n::Tr("fence.remove")) + L" \"" +
+                          m_icons[iconHit].name + L"\"";
+        AppendMenuW(menu, MF_STRING, 3, rm.c_str());
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    }
+
+    AppendMenuW(menu, MF_STRING, 1, L10n::Tr("fence.rename"));
+    AppendMenuW(menu, MF_STRING, 4, L10n::Tr("fence.appearance"));
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // Explorer's own 新建 submenu, queried straight into the fence menu.
+    // Mapped fences create into their folder; unmapped ones point the
+    // handler at the desktop PIDL itself so the entries match the system
+    // desktop menu exactly (e.g. 快捷方式).
+    PIDLIST_ABSOLUTE pidlNewFolder = nullptr;
+    if (IsMapped())
+        SHParseDisplayName(m_sourceFolder.c_str(), nullptr,
+                           &pidlNewFolder, 0, nullptr);
+    else
+        SHGetSpecialFolderLocation(nullptr, CSIDL_DESKTOP, &pidlNewFolder);
+    ComPtr<IContextMenu> spNewCM;
+    UINT newMenuPos = 0;
+    bool newMenuAdded = false;
+    if (pidlNewFolder &&
+        SUCCEEDED(ShellMenu::CreateNewMenuHandler(pidlNewFolder, &spNewCM))) {
+        newMenuPos = (UINT)GetMenuItemCount(menu);
+        HRESULT hrQ = spNewCM->QueryContextMenu(menu, newMenuPos,
+                (UINT)ShellMenu::kCmdNewFirst, 0x7FFF, CMF_NORMAL);
+        if (SUCCEEDED(hrQ)) {
+            // The handler fills its submenu lazily on WM_INITMENUPOPUP —
+            // the same message Explorer forwards before showing it.
+            HMENU hNewSub = GetSubMenu(menu, newMenuPos);
+            if (hNewSub) {
+                ShellMenu::ForwardMenuMessage(spNewCM.Get(), WM_INITMENUPOPUP,
+                                              (WPARAM)hNewSub, 0);
+            }
+            newMenuAdded = true;
+            ShellMenu::SetActiveNewMenu(spNewCM.Get());
+            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        } else {
+            spNewCM.Reset();
+        }
+    }
+
+    AppendMenuW(menu, MF_STRING, 2, L10n::Tr("fence.delete"));
+
+    // Sort-by submenu (mapped fences only)
+    if (!m_sourceFolder.empty()) {
+        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+        HMENU sortMenu = CreatePopupMenu();
+        auto addSortItem = [&](UINT id, int col, const char* key) {
+            UINT flags = MF_STRING;
+            if (m_sortColumn == col) flags |= MF_CHECKED;
+            AppendMenuW(sortMenu, flags, id, L10n::Tr(key));
+        };
+        addSortItem(10, 0, "fence.sort.name");
+        addSortItem(11, 1, "fence.sort.date_modified");
+        addSortItem(12, 3, "fence.sort.type");
+        addSortItem(13, 2, "fence.sort.size");
+        AppendMenuW(sortMenu, MF_SEPARATOR, 0, nullptr);
+        AppendMenuW(sortMenu, MF_STRING | (m_sortAscending ? MF_CHECKED : 0),
+                    14, L10n::Tr("fence.sort.ascending"));
+        AppendMenuW(sortMenu, MF_STRING | (!m_sortAscending ? MF_CHECKED : 0),
+                    15, L10n::Tr("fence.sort.descending"));
+        AppendMenuW(menu, MF_POPUP, (UINT_PTR)sortMenu,
+                    L10n::Tr("fence.sort_by"));
+    }
+
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, 5, L10n::Tr("fence.map_folder"));
+    if (!m_sourceFolder.empty())
+        AppendMenuW(menu, MF_STRING, 6, L10n::Tr("fence.unmap_folder"));
+
+    // Fluent glyph icons. The set owns the HBITMAPs until the menu
+    // interaction below has fully returned (MIIM_BITMAP is by reference).
+    GlyphBitmapSet glyphs;
+    {
+        int gsz = MenuGlyphSizePx();
+        auto icon = [&](UINT id, MenuGlyph g) {
+            HBITMAP b = glyphs.add(g, gsz);
+            if (!b) return;
+            MENUITEMINFOW mii = { sizeof(mii) };
+            mii.fMask = MIIM_BITMAP;
+            mii.hbmpItem = b;
+            SetMenuItemInfoW(menu, id, FALSE, &mii);
+        };
+        if (iconHit >= 0) icon(3, MenuGlyph::Remove);
+        icon(1, MenuGlyph::Pencil);    // Rename
+        icon(4, MenuGlyph::Sliders);   // Appearance Settings
+        // The New popup is addressed by position: the shell inserts it
+        // without a command id of its own.
+        if (newMenuAdded) {
+            HBITMAP b = glyphs.add(MenuGlyph::Plus, gsz);
+            if (b) {
+                MENUITEMINFOW mii = { sizeof(mii) };
+                mii.fMask = MIIM_BITMAP;
+                mii.hbmpItem = b;
+                SetMenuItemInfoW(menu, newMenuPos, TRUE, &mii);
+            }
+        }
+        icon(2, MenuGlyph::Trash);     // Delete Fence
+        icon(5, MenuGlyph::Folder);    // Map Folder
+        if (!m_sourceFolder.empty())
+            icon(6, MenuGlyph::Remove); // Unmap Folder
+    }
+
+    SetForegroundWindow(m_hwnd);
+    // Prefer the Win11 Fluent rendering; -1 means it could not be built
+    // (empty model / D2D failure) → classic menu, the same fallback the
+    // shell icon menu uses. The Fluent loop swallows the dismiss click,
+    // which is exactly what a context menu must do over a surface where
+    // a stray press would otherwise start a fence drag.
+    int cmd = FluentMenu::Run(m_hwnd, menu, pt);
+    if (cmd < 0)
+        cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
+            pt.x, pt.y, 0, m_hwnd, nullptr);
+
+    if (this) {
+        switch (cmd) {
+        case 1: EnterRename(); break;
+        case 2:
+            if (s_owner)
+                PostMessage(s_owner, WM_FENCE_DELETE, (WPARAM)m_hwnd, 0);
+            break;
+        case 3: eraseIcon(iconHit); break;
+        case 4: SettingsPanel::Run(this); break;
+        case 5: {
+            ComPtr<IFileOpenDialog> pDlg;
+            if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDlg)))) {
+                pDlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR);
+                if (SUCCEEDED(pDlg->Show(m_hwnd))) {
+                    ComPtr<IShellItem> psi;
+                    if (SUCCEEDED(pDlg->GetResult(&psi))) {
+                        LPWSTR path = nullptr;
+                        if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
+                            int res = MessageBoxW(m_hwnd,
+                                L10n::Tr("dialog.map_folder.confirm"),
+                                L10n::Tr("dialog.map_folder.title"),
+                                MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
+                            if (res == IDYES) {
+                                GetRender().Appearance().displayMode = 1;
+                                GetRender().RebuildStyles();
+                                m_loading = true;
+                                Redraw();
+                                // Force paint before blocking enumeration
+                                GetRender().BeginDraw();
+                                GetRender().EndDraw();
+                                GetRender().Present(m_hwnd, m_x, m_y);
+                                MapToFolder(path);
+                                m_loading = false;
+                            }
+                            CoTaskMemFree(path);
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        case 6: UnmapFolder(); break;
+        case 10: case 11: case 12: case 13: {
+            // Column IDs map: 10=Name(0), 11=Date(1), 12=Type(3), 13=Size(2)
+            static const int colMap[] = { 0, 1, 3, 2 };
+            int col = colMap[cmd - 10];
+            bool natAsc = (col == 0 || col == 3);   // Name/Type default ascending
+            SetSort(col, natAsc);
+            break;
+        }
+        case 14: SetSort(m_sortColumn, true); break;
+        case 15: SetSort(m_sortColumn, false); break;
+        default:
+            // An entry from the shell 新建 submenu: hand it back to the
+            // handler, which creates the file in the target folder.
+            if (cmd > ShellMenu::kCmdNewFirst && cmd <= 0x7FFF && spNewCM) {
+                std::wstring targetDir = m_sourceFolder;
+                if (targetDir.empty()) {
+                    wchar_t buf[MAX_PATH] = {};
+                    if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_DESKTOPDIRECTORY,
+                                                   nullptr, 0, buf)))
+                        targetDir = buf;
+                }
+                std::vector<std::wstring> before, after;
+                ShellMenu::SnapshotFolderNames(targetDir, before);
+                CMINVOKECOMMANDINFO ici = {};
+                ici.cbSize = sizeof(ici);
+                ici.hwnd = m_hwnd;
+                ici.lpVerb = MAKEINTRESOURCEA(cmd - ShellMenu::kCmdNewFirst);
+                ici.nShow = SW_SHOWNORMAL;
+                HRESULT hrInv = spNewCM->InvokeCommand(&ici);
+                ShellMenu::SnapshotFolderNames(targetDir, after);
+                std::wstring newPath;
+                for (const auto& n : after) {
+                    if (std::find(before.begin(), before.end(), n) == before.end()) {
+                        newPath = targetDir + L"\\" + n;
+                        break;
+                    }
+                }
+                if (!newPath.empty()) {
+                    if (IsMapped()) {
+                        // The watcher re-enumerates on its own; refresh
+                        // synchronously so the new file is visible and
+                        // can enter rename mode right away.
+                        ClearSearch();
+                        RefreshFromSource();
+                    } else {
+                        AddIcon(newPath.substr(newPath.find_last_of(L'\\') + 1),
+                                      newPath, (float)cli.x, (float)cli.y);
+                    }
+                    for (int i = 0; i < (int)m_icons.size(); i++) {
+                        if (lstrcmpiW(m_icons[i].path.c_str(), newPath.c_str()) == 0) {
+                            SelectOnly(i);
+                            EnterIconRename(i);
+                            break;
+                        }
+                    }
+                }
+            }
+            break;
+        }
+    }
+    // Destroy only after dispatch: the shell 新建 handler keeps its
+    // cached submenu alive until InvokeCommand runs — destroying the
+    // menu first makes it fail with E_FAIL.
+    DestroyMenu(menu);
+    ShellMenu::SetActiveNewMenu(nullptr);
+    if (pidlNewFolder) CoTaskMemFree(pidlNewFolder);
+    return 0;
+}
+
+LRESULT FenceWindow::OnMouseWheel(UINT msg, WPARAM wp, LPARAM lp)     {
+    float maxS = ListMaxScroll();
+    if (maxS <= 0) return 0;
+    float rowH = m_render->Appearance().iconSize * 2.6f;
+    int steps = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
+    m_listScroll -= steps * rowH * 3;
+    ClampListScroll();
+    Redraw();
+    return 0;
+}
+
+LRESULT FenceWindow::OnChar(UINT msg, WPARAM wp, LPARAM lp) {
+    if (m_renaming && wp >= 32) {
+        m_renameBuf += (wchar_t)wp;
+        Redraw();
+    } else if (m_renameIcon >= 0 && wp >= 32) {
+        if (m_iconRenamePristine) {
+            m_iconRenameBuf.clear();
+            m_iconRenameCaret = 0;
+            m_iconRenamePristine = false;
+        }
+        m_iconRenameBuf.insert(m_iconRenameCaret, 1, (wchar_t)wp);
+        m_iconRenameCaret++;
+        Redraw();
+    } else if (m_searchFocused) {
+        if (wp == 0x08) {   // backspace
+            if (!m_searchText.empty()) {
+                m_searchText.pop_back();
+                RebuildFilter();
+            }
+        } else if (wp >= 32) {
+            m_searchText += (wchar_t)wp;
+            RebuildFilter();
+        }
+    } else if (IsMapped() && wp >= 32) {
+        FocusSearch();
+        m_searchText += (wchar_t)wp;
+        RebuildFilter();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnKeyDown(UINT msg, WPARAM wp, LPARAM lp) {
+    if (m_renaming) {
+        if (wp == VK_RETURN)  { ExitRename(true); }
+        if (wp == VK_ESCAPE)  { ExitRename(false); }
+        if (wp == VK_BACK && !m_renameBuf.empty()) {
+            m_renameBuf.pop_back();
+            Redraw();
+        }
+    } else if (m_renameIcon >= 0) {
+        auto& buf = m_iconRenameBuf;
+        auto& caret = m_iconRenameCaret;
+        // Explorer's rename-box editing: the initial select-all consumes
+        // the first typed/backspaced input; Left/Right/Home/End only
+        // collapse it to an edge of the selection.
+        if (wp == VK_RETURN) {
+            ExitIconRename(true);
+        } else if (wp == VK_ESCAPE) {
+            ExitIconRename(false);
+        } else if (wp == VK_BACK) {
+            if (m_iconRenamePristine) {
+                buf.clear(); caret = 0; m_iconRenamePristine = false;
+            } else if (caret > 0) { buf.erase(caret - 1, 1); caret--; }
+            Redraw();
+        } else if (wp == VK_DELETE) {
+            if (m_iconRenamePristine) {
+                buf.clear(); caret = 0; m_iconRenamePristine = false;
+            } else if (caret < buf.size()) buf.erase(caret, 1);
+            Redraw();
+        } else if (wp == VK_LEFT) {
+            if (m_iconRenamePristine) { m_iconRenamePristine = false; caret = 0; }
+            else if (caret > 0) caret--;
+            Redraw();
+        } else if (wp == VK_RIGHT) {
+            if (m_iconRenamePristine) { m_iconRenamePristine = false; caret = buf.size(); }
+            else if (caret < buf.size()) caret++;
+            Redraw();
+        } else if (wp == VK_HOME) {
+            m_iconRenamePristine = false; caret = 0;
+            Redraw();
+        } else if (wp == VK_END) {
+            m_iconRenamePristine = false; caret = buf.size();
+            Redraw();
+        }
+    } else if (m_searchFocused) {
+        if (wp == VK_ESCAPE) { ClearSearch(); }
+    } else if (IsMapped() && wp == 'F' &&
+               (GetKeyState(VK_CONTROL) & 0x8000)) {
+        FocusSearch();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnKillFocus(UINT msg, WPARAM wp, LPARAM lp) {
+    if (this) {
+        if (m_renaming)
+            ExitRename(false);
+        else if (m_renameIcon >= 0)
+            ExitIconRename(true);   // Explorer commits on focus loss
+        else if (m_searchFocused) {
+            m_searchFocused = false;
+            m_cursorVisible = false;
+            if (m_cursorTimer) { KillTimer(m_hwnd, 1); m_cursorTimer = 0; }
+            if (m_focusAttached) {
+                AttachThreadInput(GetCurrentThreadId(), m_focusAttached, FALSE);
+                m_focusAttached = 0;
+            }
+            Redraw();
+        }
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnTimer(UINT msg, WPARAM wp, LPARAM lp) {
+    if (wp == 1 && (m_renaming || m_renameIcon >= 0 ||
+                    m_searchFocused)) {
+        m_cursorVisible = !m_cursorVisible;
+        Redraw();
+    } else if (wp == 2) {
+        KillTimer(m_hwnd, 2);
+        CaptureBackdrop();
+    } else if (wp == 5) {
+        KillTimer(m_hwnd, 5);
+        RefreshFromSource();
+    }
+    return 0;
+}
+
+LRESULT FenceWindow::OnFenceRefresh(UINT msg, WPARAM wp, LPARAM lp) {
+    if (this) SetTimer(m_hwnd, 5, 500, nullptr);
+    return 0;
+}
+
+LRESULT FenceWindow::OnShowWindow(UINT msg, WPARAM wp, LPARAM lp) {
+    // Win+D ("Show desktop") hides every top-level window that is not
+    // part of the shell's desktop tree. A fence belongs *on* the desktop,
+    // so resist any hide we did not cause ourselves (m_appHidden is set
+    // by Hide()). The re-show is posted, not done in-place: by the time
+    // the posted message runs, the hide sweep has finished, so the fence
+    // cannot be hidden a second time.
+    // (lp != 0 means the hide came from a parent state change — as a
+    // desktop child we get those legitimately; only fight direct hides.)
+    if (!wp && !lp && !m_appHidden)
+        PostMessage(m_hwnd, WM_FENCE_RESHOW, 0, 0);
+    return 0;
+}
+
+LRESULT FenceWindow::OnFenceReshow(UINT msg, WPARAM wp, LPARAM lp) {
+    if (!m_appHidden && !IsWindowVisible(m_hwnd))
+        ShowWindow(m_hwnd, SW_SHOWNA);   // don't steal focus from the desktop
+    return 0;
+}
+
+LRESULT FenceWindow::OnSysCommand(UINT msg, WPARAM wp, LPARAM lp) {
+    // Win+M minimizes every window; a toolwindow fence has no taskbar
+    // button to bring it back, so simply refuse to minimize.
+    if ((wp & 0xFFF0) == SC_MINIMIZE) return 0;
+    return DefWindowProcW(m_hwnd, msg, wp, lp);
+}
+
+LRESULT FenceWindow::OnDestroy(UINT msg, WPARAM wp, LPARAM lp) {
+    if (this) { StopSourceWatch(); SetWindowLongPtr(m_hwnd, GWLP_USERDATA, 0); }
+    return 0;
+}
+
 LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     auto* self = (FenceWindow*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 
@@ -1043,953 +1999,38 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                                        msg == WM_MEASUREITEM))
         ShellMenu::ForwardMenuMessage(ShellMenu::ActiveNewMenu(), msg, wp, lp);
 
-    switch (msg) {
-    case WM_CREATE: {
+    if (msg == WM_CREATE) {
         auto* cs = (CREATESTRUCT*)lp;
         SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)cs->lpCreateParams);
         return 0;
     }
-    case WM_DROPFILES: {
-        HDROP hdrop = (HDROP)wp;
-        if (!self) { DragFinish(hdrop); return 0; }
-        self->SetDragOver(false);
+    // Before WM_CREATE has run the window has no FenceWindow yet.
+    if (!self) return DefWindowProcW(hwnd, msg, wp, lp);
 
-        POINT dropPt = {};
-        DragQueryPoint(hdrop, &dropPt);
-        float dx = (float)dropPt.x, dy = (float)dropPt.y;
-
-        UINT count = DragQueryFileW(hdrop, 0xFFFFFFFF, nullptr, 0);
-        for (UINT i = 0; i < count; i++) {
-            WCHAR path[MAX_PATH];
-            if (DragQueryFileW(hdrop, i, path, MAX_PATH)) {
-                WCHAR display[MAX_PATH];
-                wcscpy_s(display, PathFindFileNameW(path));
-                PathRemoveExtensionW(display);
-                if (display[0])
-                    self->AddIcon(display, path, dx, dy);
-            }
-        }
-        DragFinish(hdrop);
-        return 0;
+    switch (msg) {
+    case WM_DROPFILES: return self->OnDropFiles(msg, wp, lp);
+    case WM_NCHITTEST: return self->OnNcHitTest(msg, wp, lp);
+    case WM_SETCURSOR: return self->OnSetCursor(msg, wp, lp);
+    case WM_SIZE: return self->OnSize(msg, wp, lp);
+    case WM_WINDOWPOSCHANGED: return self->OnWindowPosChanged(msg, wp, lp);
+    case WM_NCLBUTTONDOWN: return self->OnNcLButtonDown(msg, wp, lp);
+    case WM_LBUTTONDOWN: return self->OnLButtonDown(msg, wp, lp);
+    case WM_MOUSEMOVE: return self->OnMouseMove(msg, wp, lp);
+    case WM_LBUTTONUP: return self->OnLButtonUp(msg, wp, lp);
+    case WM_CAPTURECHANGED: return self->OnCaptureChanged(msg, wp, lp);
+    case WM_MOUSELEAVE: return self->OnMouseLeave(msg, wp, lp);
+    case WM_LBUTTONDBLCLK: return self->OnLButtonDblClk(msg, wp, lp);
+    case WM_RBUTTONUP: return self->OnRButtonUp(msg, wp, lp);
+    case WM_MOUSEWHEEL: return self->OnMouseWheel(msg, wp, lp);
+    case WM_CHAR: return self->OnChar(msg, wp, lp);
+    case WM_KEYDOWN: return self->OnKeyDown(msg, wp, lp);
+    case WM_KILLFOCUS: return self->OnKillFocus(msg, wp, lp);
+    case WM_TIMER: return self->OnTimer(msg, wp, lp);
+    case WM_FENCE_REFRESH: return self->OnFenceRefresh(msg, wp, lp);
+    case WM_SHOWWINDOW: return self->OnShowWindow(msg, wp, lp);
+    case WM_FENCE_RESHOW: return self->OnFenceReshow(msg, wp, lp);
+    case WM_SYSCOMMAND: return self->OnSysCommand(msg, wp, lp);
+    case WM_DESTROY: return self->OnDestroy(msg, wp, lp);
     }
-    case WM_NCHITTEST: {
-        if (!self) return HTCLIENT;
-        POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-        ScreenToClient(hwnd, &pt);
-        return EdgeHit(hwnd, self->m_collapsed, pt.x, pt.y);
-    }
-    case WM_SETCURSOR: {
-        // A fence is a layered child of *another process's* desktop list, so
-        // the usual cursor plumbing (class cursor applied through the parent
-        // chain) never reaches it — without this the pointer keeps whatever
-        // shape it had before entering. Recompute the hit from the live
-        // cursor position: during a resize drag the pointer can leave the
-        // edge zone, and we still want the sizing shape in that case.
-        if (self) {
-            int ht = self->m_resizeMask
-                ? self->m_resizeHT
-                : [&] { POINT p; GetCursorPos(&p); ScreenToClient(hwnd, &p);
-                        return EdgeHit(hwnd, self->m_collapsed, p.x, p.y); }();
-            SetCursor(LoadCursorW(nullptr, CursorForHT(ht)));
-            return TRUE;
-        }
-        return DefWindowProc(hwnd, msg, wp, lp);
-    }
-    case WM_SIZE: {
-        UINT w = LOWORD(lp), h = HIWORD(lp);
-        if (self && w > 0 && h > 0 && (w != self->m_render->Width() || h != self->m_render->Height())) {
-            self->m_render->Resize(w, h);
-            // Re-seat the icons on the resized grid (also resolves overlaps
-            // when the fence shrinks). Skip while collapsing: the tiny height
-            // would crush every icon's row and the layout would be lost on
-            // expand. RelayoutIcons redraws on its own.
-            if (!self->m_collapsed) self->RelayoutIcons();
-            else                    self->Redraw();
-        }
-        return 0;
-    }
-    case WM_WINDOWPOSCHANGED: {
-        if (self) {
-            RECT wr; GetWindowRect(hwnd, &wr);
-            self->m_x = wr.left;
-            self->m_y = wr.top;
-            // Re-snapshot the frosted-glass backdrop shortly after the
-            // window settles. SetTimer resets the countdown, so a continuous
-            // move/resize only triggers one capture once it stops.
-            SetTimer(hwnd, 2, 150, nullptr);
-        }
-        return DefWindowProc(hwnd, msg, wp, lp);
-    }
-    case WM_NCLBUTTONDOWN: {
-        // Edge resize. DefWindowProc's size loop only works for top-level
-        // windows, so for our desktop-child fences we run it manually:
-        // remember the starting rect/cursor and follow WM_MOUSEMOVE.
-        if (!self) return DefWindowProc(hwnd, msg, wp, lp);
-        int code = (int)wp;
-        if (code >= HTLEFT && code <= HTBOTTOMRIGHT) {
-            int mask = 0;
-            if (code == HTLEFT || code == HTTOPLEFT || code == HTBOTTOMLEFT)      mask |= 1;
-            if (code == HTRIGHT || code == HTTOPRIGHT || code == HTBOTTOMRIGHT)   mask |= 2;
-            if (code == HTTOP || code == HTTOPLEFT || code == HTTOPRIGHT)         mask |= 4;
-            if (code == HTBOTTOM || code == HTBOTTOMLEFT || code == HTBOTTOMRIGHT) mask |= 8;
-            POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };   // screen coords
-            RECT wr; GetWindowRect(hwnd, &wr);
-            HWND parent = GetParent(hwnd);
-            if (parent) {                   // screen → parent-client
-                ScreenToClient(parent, &pt);
-                POINT a{ wr.left, wr.top }, b{ wr.right, wr.bottom };
-                ScreenToClient(parent, &a);
-                ScreenToClient(parent, &b);
-                wr = { a.x, a.y, b.x, b.y };
-            }
-            self->m_resizeMask = mask;
-            self->m_resizeHT = code;      // keep this sizing shape for the drag
-            self->m_resizeStart = wr;
-            self->m_resizePtX = pt.x;
-            self->m_resizePtY = pt.y;
-            SetCapture(hwnd);
-            SetCursor(LoadCursorW(nullptr, CursorForHT(code)));
-            return 0;
-        }
-        return DefWindowProc(hwnd, msg, wp, lp);
-    }
-    case WM_LBUTTONDOWN: {
-        if (!self) return 0;
-        int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
-
-        // List-mode scrollbar hit test (before icon/chevron/move handling)
-        float maxS = self->ListMaxScroll();
-        if (maxS > 0) {
-            const auto& app = self->m_render->Appearance();
-            float bt = self->ContentTop();
-            float w = (float)self->m_render->Width();
-            float h = (float)self->m_render->Height();
-            float rowH = app.iconSize * 2.6f;
-            float sbW = 6.0f, sbPad = 2.0f;
-            float trackX = w - sbW - sbPad;
-            if ((float)mx >= trackX && (float)my >= bt) {
-                float trackH = h - bt - sbPad * 2;
-                float totalH = (float)self->VisibleCount() * rowH;
-                float contentH = h - bt;
-                float thumbH = (std::max)(20.0f, trackH * contentH / totalH);
-                float thumbY = bt + sbPad + (self->m_listScroll / maxS) * (trackH - thumbH);
-                if ((float)my < thumbY) {
-                    self->m_listScroll -= contentH;
-                    self->ClampListScroll();
-                    self->Redraw();
-                    return 0;
-                } else if ((float)my > thumbY + thumbH) {
-                    self->m_listScroll += contentH;
-                    self->ClampListScroll();
-                    self->Redraw();
-                    return 0;
-                } else {
-                    self->m_scrollbarDrag = true;
-                    self->m_scrollDragStartY = (float)my;
-                    self->m_scrollDragStartOffset = self->m_listScroll;
-                    SetCapture(hwnd);
-                    return 0;
-                }
-            }
-        }
-
-        // A click anywhere outside the renaming icon's label commits the
-        // rename first (Explorer behavior), then the click acts normally.
-        if (self->m_renameIcon >= 0 && self->HitTestIcon(mx, my) != self->m_renameIcon)
-            self->ExitIconRename(true);
-
-        if (!self->m_renaming && my < (int)self->m_render->Appearance().titleH) {
-            // Top-right corner of the title bar = collapse/expand arrow.
-            int arrowL = (int)(self->m_render->Width() - self->m_render->Appearance().titleH);
-            if (mx >= arrowL) {
-                self->m_chevronDown = true;
-                self->m_chevronHover = true;
-                SetCapture(hwnd);
-                self->Redraw();
-                return 0;
-            }
-            // Rest of the title bar → drag the whole fence. Manual capture
-            // drag: DefWindowProc's HTCAPTION loop doesn't move child windows.
-            self->m_moveOffX = mx;
-            self->m_moveOffY = my;
-            self->m_moving = true;
-            SetCapture(hwnd);
-            return 0;
-        }
-        // Search-box strip (mapped fences): focus the box on click, consume the event
-        if (self && !self->m_renaming && self->IsMapped() &&
-            my >= (int)self->m_render->Appearance().titleH &&
-            my < (int)self->ContentTop()) {
-            self->FocusSearch();
-            return 0;
-        }
-        // Icon → select it and arm a drag inside the fence
-        int hit = self->HitTestIcon(mx, my);
-        if (hit >= 0) {
-            std::wstring pressedPath = self->m_icons[hit].path;
-            // Explorer selection rule: pressing an already-selected icon
-            // keeps the multi-selection (the whole group will drag
-            // together); pressing any other icon collapses it to a single.
-            if (!self->IsPathSelected(pressedPath)) self->SelectOnly(hit);
-            // Bring the WHOLE selection to the front so it draws above the
-            // rest while dragging. That reorders the vector, so re-locate
-            // every index by path afterwards.
-            self->BringSelectedToFront();
-            self->m_dragGroup.clear();
-            self->m_dragExcludes.clear();
-            for (int i = 0; i < (int)self->m_icons.size(); i++) {
-                if (!self->IsPathSelected(self->m_icons[i].path)) continue;
-                self->m_dragGroup.push_back({ i, self->m_icons[i].x, self->m_icons[i].y });
-                self->m_dragExcludes.push_back(i);
-                if (self->m_icons[i].path == pressedPath) hit = i;
-            }
-            self->m_hoverIcon = hit;
-            self->m_dragIcon = hit;         // the pressed icon leads the group
-            self->m_dragDirX = 0;
-            self->m_dragMoved = false;      // real drag starts past the
-            self->m_dragGrabX = mx;         // system drag distance — a plain
-            self->m_dragGrabY = my;         // click must not disturb anything
-            self->m_dragHoverCell = self->CellOf(self->m_icons[hit]);
-            SetCapture(hwnd);
-            self->Redraw();
-        } else {
-            // Empty body → marquee multi-select (desktop style). The press
-            // arms the band; the click/drag threshold in WM_MOUSEMOVE
-            // decides whether it becomes a plain click (which clears the
-            // selection) or a live rubber band. Ctrl keeps the current
-            // selection and adds to it instead of replacing it.
-            self->m_marquee = true;
-            self->m_marqueeMoved = false;
-            self->m_marqueeAdd = (wp & MK_CONTROL) != 0;
-            if (self->m_marqueeAdd) {
-                self->m_marqueeBase = self->m_selectedPaths;
-            } else {
-                self->m_marqueeBase.clear();
-                self->ClearSelection();
-            }
-            self->m_marqAX = self->m_marqCX = mx;
-            self->m_marqAY = self->m_marqCY = my;
-            SetCapture(hwnd);
-            self->Redraw();
-        }
-        return 0;
-    }
-    case WM_MOUSEMOVE: {
-        // Belt and suspenders alongside WM_SETCURSOR: mouse moves are routed
-        // straight to this window, so setting the shape here works even if the
-        // desktop list parent swallows WM_SETCURSOR. lParam is client coords.
-        if (self) {
-            int ht = self->m_resizeMask
-                ? self->m_resizeHT
-                : EdgeHit(hwnd, self->m_collapsed, GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
-            SetCursor(LoadCursorW(nullptr, CursorForHT(ht)));
-        }
-        // List-mode scrollbar thumb drag
-        if (self && self->m_scrollbarDrag) {
-            float dy = (float)GET_Y_LPARAM(lp) - self->m_scrollDragStartY;
-            float maxS = self->ListMaxScroll();
-            if (maxS > 0) {
-                const auto& app = self->m_render->Appearance();
-                float rowH = app.iconSize * 2.6f;
-                float bt = self->ContentTop();
-                float h = (float)self->m_render->Height();
-                float sbPad = 2.0f;
-                float trackH = h - bt - sbPad * 2;
-                float totalH = (float)self->VisibleCount() * rowH;
-                float contentH = h - bt;
-                float thumbH = (std::max)(20.0f, trackH * contentH / totalH);
-                float range = trackH - thumbH;
-                if (range > 0) {
-                    self->m_listScroll = self->m_scrollDragStartOffset + (dy / range) * maxS;
-                    self->ClampListScroll();
-                    self->Redraw();
-                }
-            }
-            return 0;
-        }
-
-        // Hover plate (Explorer style). No capture is active in this branch,
-        // so re-arm leave tracking on every move and hit-test the cursor.
-        if (self && !self->m_collapsed && !self->m_moving &&
-            !self->m_resizeMask && self->m_dragIcon < 0 && !self->m_marquee) {
-            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
-            TrackMouseEvent(&tme);
-            int h = self->HitTestIcon(GET_X_LPARAM(lp), GET_Y_LPARAM(lp));
-            if (h != self->m_hoverIcon) {
-                self->m_hoverIcon = h;
-                self->Redraw();
-            }
-        }
-        // Chevron hover. Works expanded AND collapsed (the arrow is the only
-        // control a collapsed fence has), and also while the button is
-        // pressed — capture keeps the moves coming here, so the plate follows
-        // the cursor on and off the button (under-capture coordinates may be
-        // negative, hence the explicit >= 0 checks).
-        if (self && !self->m_renaming && !self->m_moving &&
-            !self->m_resizeMask && self->m_dragIcon < 0 && !self->m_marquee) {
-            int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
-            int th = (int)self->m_render->Appearance().titleH;
-            int arrowL = (int)(self->m_render->Width() - self->m_render->Appearance().titleH);
-            bool in = my >= 0 && my < th && mx >= arrowL;
-            if (in != self->m_chevronHover) {
-                self->m_chevronHover = in;
-                self->Redraw();
-            }
-        }
-        if (self && self->m_marquee) {
-            int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
-            if (!self->m_marqueeMoved) {
-                // The same click/drag discrimination icon drags use: a press
-                // that never travels the system drag distance stays a plain
-                // click (settled in WM_LBUTTONUP).
-                int t = GetSystemMetrics(SM_CXDRAG);
-                if (abs(mx - self->m_marqAX) < t && abs(my - self->m_marqAY) < t)
-                    return 0;
-                self->m_marqueeMoved = true;
-            }
-            self->m_marqCX = mx;
-            self->m_marqCY = my;
-            self->UpdateMarqueeSelection();
-            self->Redraw();
-            return 0;
-        }
-        if (self && self->m_moving) {
-            // Cursor to parent-client coords, keep the grabbed offset
-            POINT p{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-            ClientToScreen(hwnd, &p);
-            HWND parent = GetParent(hwnd);
-            if (parent) ScreenToClient(parent, &p);
-            SetWindowPos(hwnd, nullptr, p.x - self->m_moveOffX, p.y - self->m_moveOffY,
-                0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-            return 0;
-        }
-        if (self && self->m_resizeMask) {
-            POINT p{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-            ClientToScreen(hwnd, &p);
-            HWND parent = GetParent(hwnd);
-            if (parent) ScreenToClient(parent, &p);
-            int dx = p.x - self->m_resizePtX;
-            int dy = p.y - self->m_resizePtY;
-            RECT r = self->m_resizeStart;
-            if (self->m_resizeMask & 1) r.left   += dx;
-            if (self->m_resizeMask & 2) r.right  += dx;
-            if (self->m_resizeMask & 4) r.top    += dy;
-            if (self->m_resizeMask & 8) r.bottom += dy;
-            // Enforce a sane minimum so the fence can't vanish
-            int th  = (int)(self->m_render->Appearance().titleH + 0.5f);
-            int minW = (int)(120.0f * Desktop::DpiScale() + 0.5f);
-            int minH = th + (int)(40.0f * Desktop::DpiScale() + 0.5f);
-            if (r.right - r.left < minW) {
-                if (self->m_resizeMask & 1) r.left = r.right - minW;
-                else                        r.right = r.left + minW;
-            }
-            if (r.bottom - r.top < minH) {
-                if (self->m_resizeMask & 4) r.top = r.bottom - minH;
-                else                        r.bottom = r.top + minH;
-            }
-            SetWindowPos(hwnd, nullptr, r.left, r.top, r.right - r.left, r.bottom - r.top,
-                SWP_NOZORDER | SWP_NOACTIVATE);
-            return 0;
-        }
-        if (self && self->m_dragIcon >= 0) {
-            int mx = GET_X_LPARAM(lp), my = GET_Y_LPARAM(lp);
-            if (!self->m_dragMoved) {
-                // Explorer's click/drag discrimination: an icon press only
-                // becomes a drag once the cursor travels the system drag
-                // distance. Until then the icons stay put (click = select).
-                int t = GetSystemMetrics(SM_CXDRAG);
-                if (abs(mx - self->m_dragGrabX) < t &&
-                    abs(my - self->m_dragGrabY) < t)
-                    return 0;
-                self->m_dragMoved = true;
-                // Stale overlaps under the lifted group resolve at drag
-                // start — squatters are pushed to the nearest free cells.
-                self->PushGroupOut();
-            }
-            // The whole selection rides ONE shared delta (Explorer group
-            // drag). For a single-icon selection this is exactly the old
-            // offset-follow behavior.
-            float dx = (float)(mx - self->m_dragGrabX);
-            float dy = (float)(my - self->m_dragGrabY);
-            for (const auto& d : self->m_dragGroup) {
-                if (d.idx < 0 || d.idx >= (int)self->m_icons.size()) continue;
-                float nx = d.x + dx, ny = d.y + dy;
-                self->ClampIconPos(nx, ny);
-                self->m_icons[d.idx].x = floorf(nx + 0.5f);   // whole pixels
-                self->m_icons[d.idx].y = floorf(ny + 0.5f);
-            }
-            // Push-aside: whenever the pressed icon enters a new cell, sweep
-            // every cell the group now covers — bystanders flow out of the
-            // way mid-drag, along the row in the drag's direction.
-            int hovered = self->CellOf(self->m_icons[self->m_dragIcon]);
-            if (hovered != self->m_dragHoverCell) {
-                FenceWindow::IconGrid g = self->GetIconGrid();
-                int dc = (hovered % g.cols) - (self->m_dragHoverCell % g.cols);
-                if (dc != 0) self->m_dragDirX = dc > 0 ? 1 : -1;
-                self->m_dragHoverCell = hovered;
-                self->PushGroupOut();
-            }
-            self->Redraw();
-        }
-        return 0;
-    }
-    case WM_LBUTTONUP: {
-        if (!self) return 0;
-        if (self->m_scrollbarDrag) {
-            self->m_scrollbarDrag = false;
-            ReleaseCapture();
-            return 0;
-        }
-        if (self->m_chevronDown) {
-            self->m_chevronDown = false;
-            ReleaseCapture();
-            POINT p; GetCursorPos(&p); ScreenToClient(hwnd, &p);
-            int th = (int)self->m_render->Appearance().titleH;
-            int arrowL = (int)(self->m_render->Width() - self->m_render->Appearance().titleH);
-            bool inside = p.y >= 0 && p.y < th && p.x >= arrowL;
-            self->m_chevronHover = inside;
-            if (inside) self->ToggleCollapse();
-            else        self->Redraw();
-            return 0;
-        }
-        bool wasBusy = self->m_dragIcon >= 0 || self->m_moving ||
-                       self->m_resizeMask || self->m_marquee;
-        if (self->m_marquee) {
-            // A press that never passed the drag threshold was a plain click
-            // on empty ground — the selection was already cleared at press
-            // time (additive mode left it alone). A real sweep keeps the
-            // band's final selection. Either way: drop the band's state.
-            self->m_marquee = false;
-            self->m_marqueeMoved = false;
-            self->m_marqueeAdd = false;
-            self->m_marqueeBase.clear();
-            self->Redraw();   // erase the rubber band
-        }
-        if (self->m_dragIcon >= 0) {
-            // Mouse capture routed every move to the drag path, so the hover
-            // plate is stale — re-derive it from the live cursor before the
-            // settle redraw paints the final frame.
-            POINT p; GetCursorPos(&p); ScreenToClient(hwnd, &p);
-            self->m_hoverIcon = self->HitTestIcon(p.x, p.y);
-            self->SettleDragGroup();
-        }
-        bool geomChanged = self->m_moving || self->m_resizeMask;
-        self->m_moving = false;
-        self->m_resizeMask = 0;
-        if (wasBusy) ReleaseCapture();
-        if (geomChanged) Config::MarkDirty();   // fence moved / resized
-        return 0;
-    }
-    case WM_CAPTURECHANGED: {
-        // Capture stolen mid-gesture: settle the group instead of leaving it
-        // overlapping somebody, and drop any half-drawn rubber band. (Our own
-        // ReleaseCapture in WM_LBUTTONUP gets here with the drag/marquee
-        // state already cleared — no double settle.)
-        if (self) {
-            if (self->m_chevronDown) {   // press disarmed without a release
-                self->m_chevronDown = false;
-                self->Redraw();
-            }
-            if (self->m_dragIcon >= 0) self->SettleDragGroup();
-            if (self->m_marquee) {
-                self->m_marquee = false;
-                self->m_marqueeMoved = false;
-                self->m_marqueeAdd = false;
-                self->m_marqueeBase.clear();
-                self->Redraw();
-            }
-            if (self->m_moving || self->m_resizeMask) Config::MarkDirty();
-            self->m_moving = false;
-            self->m_resizeMask = 0;
-        }
-        return 0;
-    }
-    case WM_MOUSELEAVE: {
-        // Cursor left the fence: drop the hover states. (While a capture is
-        // active — drag/move/resize/chevron press — leave notifications are
-        // suppressed.)
-        if (self && self->m_dragIcon < 0 &&
-            !self->m_moving && !self->m_resizeMask && !self->m_marquee) {
-            bool dirty = false;
-            if (self->m_hoverIcon >= 0) { self->m_hoverIcon = -1;       dirty = true; }
-            if (self->m_chevronHover)   { self->m_chevronHover = false; dirty = true; }
-            if (dirty) self->Redraw();
-        }
-        return 0;
-    }
-    case WM_LBUTTONDBLCLK: {
-        if (!self) return 0;
-        int mx = GET_X_LPARAM(lp);
-        int my = GET_Y_LPARAM(lp);
-        if (my < (int)self->m_render->Appearance().titleH) {
-            // Ignore the collapse-arrow box so it doesn't trigger a rename
-            int arrowL = (int)(self->m_render->Width() - self->m_render->Appearance().titleH);
-            if (mx >= arrowL) return 0;
-            self->EnterRename();
-            return 0;
-        }
-        // Search-box strip: no action on double-click
-        if (self->IsMapped() && my < (int)self->ContentTop()) return 0;
-        // Double-click on an icon → open it
-        int hit = self->HitTestIcon(mx, my);
-        if (hit >= 0) {
-            ShellExecuteW(hwnd, L"open", self->m_icons[hit].path.c_str(),
-                          nullptr, nullptr, SW_SHOW);
-        }
-        return 0;
-    }
-    case WM_RBUTTONUP: {
-        POINT pt{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-        ClientToScreen(hwnd, &pt);
-        POINT cli{ GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-
-        // Detect which icon was clicked (same geometry as rendering)
-        int iconHit = -1;
-        if (self && !self->m_icons.empty())
-            iconHit = self->HitTestIcon(cli.x, cli.y);
-
-        // Right-click selects too, so the menu appears over the selection
-        // plate exactly like the Explorer desktop. A press on an icon that is
-        // ALREADY selected keeps the whole multi-selection (Explorer keeps the
-        // group intact so the menu verbs apply to every member); otherwise
-        // the selection collapses to the pressed icon.
-        if (self && iconHit >= 0) {
-            if (!self->IsPathSelected(self->m_icons[iconHit].path))
-                self->SelectOnly(iconHit);
-            self->m_hoverIcon = iconHit;
-            self->Redraw();
-        }
-
-        // Remove icon `idx`, repairing selection/hover bookkeeping.
-        auto eraseIcon = [&](int idx) {
-            if (!self || idx < 0 || idx >= (int)self->m_icons.size()) return;
-            // Drop the removed path from the selection set so no entry
-            // dangles pointing at a dead icon.
-            auto& sel = self->m_selectedPaths;
-            sel.erase(std::remove(sel.begin(), sel.end(), self->m_icons[idx].path),
-                      sel.end());
-            self->m_icons.erase(self->m_icons.begin() + idx);
-            if (self->m_hoverIcon == idx)      self->m_hoverIcon = -1;
-            else if (self->m_hoverIcon > idx)  self->m_hoverIcon--;
-            if (self->SearchActive()) self->RebuildFilter();
-            self->Redraw();
-            Config::MarkDirty();
-        };
-
-        // Icon → show the real Explorer context menu (Open / Cut / Copy /
-        // Delete / Properties …) with our fence-only verb appended.
-        if (self && iconHit >= 0) {
-            bool invoked = false, removeChosen = false, renameChosen = false;
-            if (ShellMenu::RunForPath(hwnd, self->m_icons[iconHit].path,
-                                    self->m_icons[iconHit].name, pt,
-                                    invoked, removeChosen, renameChosen)) {
-                if (renameChosen) {
-                    // Rename right here in the fence instead of letting the
-                    // shell rename the desktop/Explorer copy.
-                    self->SelectOnly(iconHit);
-                    self->EnterIconRename(iconHit);
-                } else if (removeChosen) {
-                    eraseIcon(iconHit);
-                } else if (invoked) {
-                    // If the shell command got rid of the file (e.g. Delete),
-                    // don't leave a dangling icon behind in the fence.
-                    if (GetFileAttributesW(self->m_icons[iconHit].path.c_str())
-                            == INVALID_FILE_ATTRIBUTES)
-                        eraseIcon(iconHit);
-                }
-                return 0;
-            }
-            // Shell menu unavailable — fall through to the fence menu below.
-        }
-
-        // Fence-level menu (background, or fallback when the shell menu fails)
-        HMENU menu = CreatePopupMenu();
-        if (iconHit >= 0 && self) {
-            std::wstring rm = std::wstring(L10n::Tr("fence.remove")) + L" \"" +
-                              self->m_icons[iconHit].name + L"\"";
-            AppendMenuW(menu, MF_STRING, 3, rm.c_str());
-            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        }
-
-        AppendMenuW(menu, MF_STRING, 1, L10n::Tr("fence.rename"));
-        AppendMenuW(menu, MF_STRING, 4, L10n::Tr("fence.appearance"));
-        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-
-        // Explorer's own 新建 submenu, queried straight into the fence menu.
-        // Mapped fences create into their folder; unmapped ones point the
-        // handler at the desktop PIDL itself so the entries match the system
-        // desktop menu exactly (e.g. 快捷方式).
-        PIDLIST_ABSOLUTE pidlNewFolder = nullptr;
-        if (self && self->IsMapped())
-            SHParseDisplayName(self->m_sourceFolder.c_str(), nullptr,
-                               &pidlNewFolder, 0, nullptr);
-        else
-            SHGetSpecialFolderLocation(nullptr, CSIDL_DESKTOP, &pidlNewFolder);
-        ComPtr<IContextMenu> spNewCM;
-        UINT newMenuPos = 0;
-        bool newMenuAdded = false;
-        if (pidlNewFolder &&
-            SUCCEEDED(ShellMenu::CreateNewMenuHandler(pidlNewFolder, &spNewCM))) {
-            newMenuPos = (UINT)GetMenuItemCount(menu);
-            HRESULT hrQ = spNewCM->QueryContextMenu(menu, newMenuPos,
-                    (UINT)ShellMenu::kCmdNewFirst, 0x7FFF, CMF_NORMAL);
-            if (SUCCEEDED(hrQ)) {
-                // The handler fills its submenu lazily on WM_INITMENUPOPUP —
-                // the same message Explorer forwards before showing it.
-                HMENU hNewSub = GetSubMenu(menu, newMenuPos);
-                if (hNewSub) {
-                    ShellMenu::ForwardMenuMessage(spNewCM.Get(), WM_INITMENUPOPUP,
-                                                  (WPARAM)hNewSub, 0);
-                }
-                newMenuAdded = true;
-                ShellMenu::SetActiveNewMenu(spNewCM.Get());
-                AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-            } else {
-                spNewCM.Reset();
-            }
-        }
-
-        AppendMenuW(menu, MF_STRING, 2, L10n::Tr("fence.delete"));
-
-        // Sort-by submenu (mapped fences only)
-        if (self && !self->m_sourceFolder.empty()) {
-            AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-            HMENU sortMenu = CreatePopupMenu();
-            auto addSortItem = [&](UINT id, int col, const char* key) {
-                UINT flags = MF_STRING;
-                if (self->m_sortColumn == col) flags |= MF_CHECKED;
-                AppendMenuW(sortMenu, flags, id, L10n::Tr(key));
-            };
-            addSortItem(10, 0, "fence.sort.name");
-            addSortItem(11, 1, "fence.sort.date_modified");
-            addSortItem(12, 3, "fence.sort.type");
-            addSortItem(13, 2, "fence.sort.size");
-            AppendMenuW(sortMenu, MF_SEPARATOR, 0, nullptr);
-            AppendMenuW(sortMenu, MF_STRING | (self->m_sortAscending ? MF_CHECKED : 0),
-                        14, L10n::Tr("fence.sort.ascending"));
-            AppendMenuW(sortMenu, MF_STRING | (!self->m_sortAscending ? MF_CHECKED : 0),
-                        15, L10n::Tr("fence.sort.descending"));
-            AppendMenuW(menu, MF_POPUP, (UINT_PTR)sortMenu,
-                        L10n::Tr("fence.sort_by"));
-        }
-
-        AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, 5, L10n::Tr("fence.map_folder"));
-        if (self && !self->m_sourceFolder.empty())
-            AppendMenuW(menu, MF_STRING, 6, L10n::Tr("fence.unmap_folder"));
-
-        // Fluent glyph icons. The set owns the HBITMAPs until the menu
-        // interaction below has fully returned (MIIM_BITMAP is by reference).
-        GlyphBitmapSet glyphs;
-        {
-            int gsz = MenuGlyphSizePx();
-            auto icon = [&](UINT id, MenuGlyph g) {
-                HBITMAP b = glyphs.add(g, gsz);
-                if (!b) return;
-                MENUITEMINFOW mii = { sizeof(mii) };
-                mii.fMask = MIIM_BITMAP;
-                mii.hbmpItem = b;
-                SetMenuItemInfoW(menu, id, FALSE, &mii);
-            };
-            if (iconHit >= 0) icon(3, MenuGlyph::Remove);
-            icon(1, MenuGlyph::Pencil);    // Rename
-            icon(4, MenuGlyph::Sliders);   // Appearance Settings
-            // The New popup is addressed by position: the shell inserts it
-            // without a command id of its own.
-            if (newMenuAdded) {
-                HBITMAP b = glyphs.add(MenuGlyph::Plus, gsz);
-                if (b) {
-                    MENUITEMINFOW mii = { sizeof(mii) };
-                    mii.fMask = MIIM_BITMAP;
-                    mii.hbmpItem = b;
-                    SetMenuItemInfoW(menu, newMenuPos, TRUE, &mii);
-                }
-            }
-            icon(2, MenuGlyph::Trash);     // Delete Fence
-            icon(5, MenuGlyph::Folder);    // Map Folder
-            if (self && !self->m_sourceFolder.empty())
-                icon(6, MenuGlyph::Remove); // Unmap Folder
-        }
-
-        SetForegroundWindow(hwnd);
-        // Prefer the Win11 Fluent rendering; -1 means it could not be built
-        // (empty model / D2D failure) → classic menu, the same fallback the
-        // shell icon menu uses. The Fluent loop swallows the dismiss click,
-        // which is exactly what a context menu must do over a surface where
-        // a stray press would otherwise start a fence drag.
-        int cmd = FluentMenu::Run(hwnd, menu, pt);
-        if (cmd < 0)
-            cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
-                pt.x, pt.y, 0, hwnd, nullptr);
-
-        if (self) {
-            switch (cmd) {
-            case 1: self->EnterRename(); break;
-            case 2:
-                if (s_owner)
-                    PostMessage(s_owner, WM_FENCE_DELETE, (WPARAM)hwnd, 0);
-                break;
-            case 3: eraseIcon(iconHit); break;
-            case 4: SettingsPanel::Run(self); break;
-            case 5: {
-                ComPtr<IFileOpenDialog> pDlg;
-                if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDlg)))) {
-                    pDlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR);
-                    if (SUCCEEDED(pDlg->Show(hwnd))) {
-                        ComPtr<IShellItem> psi;
-                        if (SUCCEEDED(pDlg->GetResult(&psi))) {
-                            LPWSTR path = nullptr;
-                            if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
-                                int res = MessageBoxW(hwnd,
-                                    L10n::Tr("dialog.map_folder.confirm"),
-                                    L10n::Tr("dialog.map_folder.title"),
-                                    MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
-                                if (res == IDYES) {
-                                    self->GetRender().Appearance().displayMode = 1;
-                                    self->GetRender().RebuildStyles();
-                                    self->m_loading = true;
-                                    self->Redraw();
-                                    // Force paint before blocking enumeration
-                                    self->GetRender().BeginDraw();
-                                    self->GetRender().EndDraw();
-                                    self->GetRender().Present(self->m_hwnd, self->m_x, self->m_y);
-                                    self->MapToFolder(path);
-                                    self->m_loading = false;
-                                }
-                                CoTaskMemFree(path);
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-            case 6: self->UnmapFolder(); break;
-            case 10: case 11: case 12: case 13: {
-                // Column IDs map: 10=Name(0), 11=Date(1), 12=Type(3), 13=Size(2)
-                static const int colMap[] = { 0, 1, 3, 2 };
-                int col = colMap[cmd - 10];
-                bool natAsc = (col == 0 || col == 3);   // Name/Type default ascending
-                self->SetSort(col, natAsc);
-                break;
-            }
-            case 14: self->SetSort(self->m_sortColumn, true); break;
-            case 15: self->SetSort(self->m_sortColumn, false); break;
-            default:
-                // An entry from the shell 新建 submenu: hand it back to the
-                // handler, which creates the file in the target folder.
-                if (cmd > ShellMenu::kCmdNewFirst && cmd <= 0x7FFF && spNewCM && self) {
-                    std::wstring targetDir = self->m_sourceFolder;
-                    if (targetDir.empty()) {
-                        wchar_t buf[MAX_PATH] = {};
-                        if (SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_DESKTOPDIRECTORY,
-                                                       nullptr, 0, buf)))
-                            targetDir = buf;
-                    }
-                    std::vector<std::wstring> before, after;
-                    ShellMenu::SnapshotFolderNames(targetDir, before);
-                    CMINVOKECOMMANDINFO ici = {};
-                    ici.cbSize = sizeof(ici);
-                    ici.hwnd = hwnd;
-                    ici.lpVerb = MAKEINTRESOURCEA(cmd - ShellMenu::kCmdNewFirst);
-                    ici.nShow = SW_SHOWNORMAL;
-                    HRESULT hrInv = spNewCM->InvokeCommand(&ici);
-                    ShellMenu::SnapshotFolderNames(targetDir, after);
-                    std::wstring newPath;
-                    for (const auto& n : after) {
-                        if (std::find(before.begin(), before.end(), n) == before.end()) {
-                            newPath = targetDir + L"\\" + n;
-                            break;
-                        }
-                    }
-                    if (!newPath.empty()) {
-                        if (self->IsMapped()) {
-                            // The watcher re-enumerates on its own; refresh
-                            // synchronously so the new file is visible and
-                            // can enter rename mode right away.
-                            self->ClearSearch();
-                            self->RefreshFromSource();
-                        } else {
-                            self->AddIcon(newPath.substr(newPath.find_last_of(L'\\') + 1),
-                                          newPath, (float)cli.x, (float)cli.y);
-                        }
-                        for (int i = 0; i < (int)self->m_icons.size(); i++) {
-                            if (lstrcmpiW(self->m_icons[i].path.c_str(), newPath.c_str()) == 0) {
-                                self->SelectOnly(i);
-                                self->EnterIconRename(i);
-                                break;
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-        }
-        // Destroy only after dispatch: the shell 新建 handler keeps its
-        // cached submenu alive until InvokeCommand runs — destroying the
-        // menu first makes it fail with E_FAIL.
-        DestroyMenu(menu);
-        ShellMenu::SetActiveNewMenu(nullptr);
-        if (pidlNewFolder) CoTaskMemFree(pidlNewFolder);
-        return 0;
-    }
-
-    case WM_MOUSEWHEEL: {
-        if (!self) return 0;
-        float maxS = self->ListMaxScroll();
-        if (maxS <= 0) return 0;
-        float rowH = self->m_render->Appearance().iconSize * 2.6f;
-        int steps = GET_WHEEL_DELTA_WPARAM(wp) / WHEEL_DELTA;
-        self->m_listScroll -= steps * rowH * 3;
-        self->ClampListScroll();
-        self->Redraw();
-        return 0;
-    }
-    case WM_CHAR:
-        if (self && self->m_renaming && wp >= 32) {
-            self->m_renameBuf += (wchar_t)wp;
-            self->Redraw();
-        } else if (self && self->m_renameIcon >= 0 && wp >= 32) {
-            if (self->m_iconRenamePristine) {
-                self->m_iconRenameBuf.clear();
-                self->m_iconRenameCaret = 0;
-                self->m_iconRenamePristine = false;
-            }
-            self->m_iconRenameBuf.insert(self->m_iconRenameCaret, 1, (wchar_t)wp);
-            self->m_iconRenameCaret++;
-            self->Redraw();
-        } else if (self && self->m_searchFocused) {
-            if (wp == 0x08) {   // backspace
-                if (!self->m_searchText.empty()) {
-                    self->m_searchText.pop_back();
-                    self->RebuildFilter();
-                }
-            } else if (wp >= 32) {
-                self->m_searchText += (wchar_t)wp;
-                self->RebuildFilter();
-            }
-        } else if (self && self->IsMapped() && wp >= 32) {
-            self->FocusSearch();
-            self->m_searchText += (wchar_t)wp;
-            self->RebuildFilter();
-        }
-        return 0;
-
-    case WM_KEYDOWN:
-        if (self && self->m_renaming) {
-            if (wp == VK_RETURN)  { self->ExitRename(true); }
-            if (wp == VK_ESCAPE)  { self->ExitRename(false); }
-            if (wp == VK_BACK && !self->m_renameBuf.empty()) {
-                self->m_renameBuf.pop_back();
-                self->Redraw();
-            }
-        } else if (self && self->m_renameIcon >= 0) {
-            auto& buf = self->m_iconRenameBuf;
-            auto& caret = self->m_iconRenameCaret;
-            // Explorer's rename-box editing: the initial select-all consumes
-            // the first typed/backspaced input; Left/Right/Home/End only
-            // collapse it to an edge of the selection.
-            if (wp == VK_RETURN) {
-                self->ExitIconRename(true);
-            } else if (wp == VK_ESCAPE) {
-                self->ExitIconRename(false);
-            } else if (wp == VK_BACK) {
-                if (self->m_iconRenamePristine) {
-                    buf.clear(); caret = 0; self->m_iconRenamePristine = false;
-                } else if (caret > 0) { buf.erase(caret - 1, 1); caret--; }
-                self->Redraw();
-            } else if (wp == VK_DELETE) {
-                if (self->m_iconRenamePristine) {
-                    buf.clear(); caret = 0; self->m_iconRenamePristine = false;
-                } else if (caret < buf.size()) buf.erase(caret, 1);
-                self->Redraw();
-            } else if (wp == VK_LEFT) {
-                if (self->m_iconRenamePristine) { self->m_iconRenamePristine = false; caret = 0; }
-                else if (caret > 0) caret--;
-                self->Redraw();
-            } else if (wp == VK_RIGHT) {
-                if (self->m_iconRenamePristine) { self->m_iconRenamePristine = false; caret = buf.size(); }
-                else if (caret < buf.size()) caret++;
-                self->Redraw();
-            } else if (wp == VK_HOME) {
-                self->m_iconRenamePristine = false; caret = 0;
-                self->Redraw();
-            } else if (wp == VK_END) {
-                self->m_iconRenamePristine = false; caret = buf.size();
-                self->Redraw();
-            }
-        } else if (self && self->m_searchFocused) {
-            if (wp == VK_ESCAPE) { self->ClearSearch(); }
-        } else if (self && self->IsMapped() && wp == 'F' &&
-                   (GetKeyState(VK_CONTROL) & 0x8000)) {
-            self->FocusSearch();
-        }
-        return 0;
-
-    case WM_KILLFOCUS:
-        if (self) {
-            if (self->m_renaming)
-                self->ExitRename(false);
-            else if (self->m_renameIcon >= 0)
-                self->ExitIconRename(true);   // Explorer commits on focus loss
-            else if (self->m_searchFocused) {
-                self->m_searchFocused = false;
-                self->m_cursorVisible = false;
-                if (self->m_cursorTimer) { KillTimer(hwnd, 1); self->m_cursorTimer = 0; }
-                if (self->m_focusAttached) {
-                    AttachThreadInput(GetCurrentThreadId(), self->m_focusAttached, FALSE);
-                    self->m_focusAttached = 0;
-                }
-                self->Redraw();
-            }
-        }
-        return 0;
-
-    case WM_TIMER:
-        if (!self) return 0;
-        if (wp == 1 && (self->m_renaming || self->m_renameIcon >= 0 ||
-                        self->m_searchFocused)) {
-            self->m_cursorVisible = !self->m_cursorVisible;
-            self->Redraw();
-        } else if (wp == 2) {
-            KillTimer(hwnd, 2);
-            self->CaptureBackdrop();
-        } else if (wp == 5) {
-            KillTimer(hwnd, 5);
-            self->RefreshFromSource();
-        }
-        return 0;
-
-    case WM_FENCE_REFRESH:
-        if (self) SetTimer(hwnd, 5, 500, nullptr);
-        return 0;
-
-    case WM_SHOWWINDOW:
-        // Win+D ("Show desktop") hides every top-level window that is not
-        // part of the shell's desktop tree. A fence belongs *on* the desktop,
-        // so resist any hide we did not cause ourselves (m_appHidden is set
-        // by Hide()). The re-show is posted, not done in-place: by the time
-        // the posted message runs, the hide sweep has finished, so the fence
-        // cannot be hidden a second time.
-        // (lp != 0 means the hide came from a parent state change — as a
-        // desktop child we get those legitimately; only fight direct hides.)
-        if (self && !wp && !lp && !self->m_appHidden)
-            PostMessage(hwnd, WM_FENCE_RESHOW, 0, 0);
-        return 0;
-
-    case WM_FENCE_RESHOW:
-        if (self && !self->m_appHidden && !IsWindowVisible(hwnd))
-            ShowWindow(hwnd, SW_SHOWNA);   // don't steal focus from the desktop
-        return 0;
-
-    case WM_SYSCOMMAND:
-        // Win+M minimizes every window; a toolwindow fence has no taskbar
-        // button to bring it back, so simply refuse to minimize.
-        if ((wp & 0xFFF0) == SC_MINIMIZE) return 0;
-        return DefWindowProc(hwnd, msg, wp, lp);
-
-    case WM_DESTROY:
-        if (self) { self->StopSourceWatch(); SetWindowLongPtr(hwnd, GWLP_USERDATA, 0); }
-        return 0;
-    }
-    return DefWindowProc(hwnd, msg, wp, lp);
+    return DefWindowProcW(hwnd, msg, wp, lp);
 }
