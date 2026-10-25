@@ -55,6 +55,11 @@ add_executable(openfences
     app/src/menu/shell_context_menu.cpp
     app/src/render/render.cpp
     app/src/render/render_draw.cpp
+    app/src/render/image_filters.cpp
+    app/src/render/render_styles.cpp
+    app/src/render/render_icons.cpp
+    app/src/render/render_backdrop.cpp
+    app/src/render/render_surface.cpp
     app/src/settings/settings_panel.cpp
     app/src/menu/context_menu.cpp
     app/src/render/icon_extract.cpp
@@ -132,4 +137,8 @@ if(OPENFENCES_BUILD_TESTS)
     target_include_directories(icon_sort_test PRIVATE app/include tests)
     target_link_libraries(icon_sort_test PRIVATE shlwapi)
     add_test(NAME icon_sort COMMAND icon_sort_test)
+
+    add_executable(image_filters_test tests/image_filters_test.cpp app/src/render/image_filters.cpp)
+    target_include_directories(image_filters_test PRIVATE app/include tests)
+    add_test(NAME image_filters COMMAND image_filters_test)
 endif()
