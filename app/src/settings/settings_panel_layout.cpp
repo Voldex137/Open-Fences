@@ -96,8 +96,16 @@ void SettingsPanel::ComputeLayout() {
         addHit(HIT_DISPMODE0 + i, m_displayModeSeg[i]);
     }
 
+    // Grid fill direction — 2-way segmented control
+    m_fillDirLblY = listBot + 400 * s;
+    float fdY = listBot + 418 * s;
+    for (int i = 0; i < 2; i++) {
+        m_fillDirSeg[i] = R(cx + i * (dmSegW + 4 * s), fdY, dmSegW, 26 * s);
+        addHit(HIT_FILLDIR0 + i, m_fillDirSeg[i]);
+    }
+
     // Separator + delete (language lives in the tray menu, not here)
-    m_sepY = listBot + 400 * s;
-    m_deleteBtn = R(cx, listBot + 412 * s, cw, 30 * s);
+    m_sepY = listBot + 456 * s;
+    m_deleteBtn = R(cx, listBot + 468 * s, cw, 30 * s);
     addHit(HIT_DELETE_FENCE, m_deleteBtn);
 }

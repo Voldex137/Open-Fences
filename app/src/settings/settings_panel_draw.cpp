@@ -68,6 +68,9 @@ void SettingsPanel::DrawPanel() {
     DrawSegments(L10n::Tr("settings.display_mode"), m_displayModeLblY,
                  { L10n::Tr("settings.mode.grid"), L10n::Tr("settings.mode.list") },
                  m_displayModeSeg, app.displayMode, HIT_DISPMODE0);
+    DrawSegments(L10n::Tr("settings.fill_direction"), m_fillDirLblY,
+                 { L10n::Tr("settings.fill.horizontal"), L10n::Tr("settings.fill.vertical") },
+                 m_fillDirSeg, app.fillDir, HIT_FILLDIR0);
     DrawTitleHeightStepper(app);
     DrawDeleteButton();
 

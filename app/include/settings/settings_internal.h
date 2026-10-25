@@ -15,6 +15,7 @@ enum : int {
     HIT_TITLEH_MINUS, HIT_TITLEH_PLUS,
     HIT_TITLEPOS0 = 160,           // +0 left, +1 center, +2 right
     HIT_DISPMODE0 = 180,           // +0 grid, +1 list
+    HIT_FILLDIR0  = 190,           // +0 horizontal, +1 vertical
     HIT_DELETE_FENCE = 200,
 };
 

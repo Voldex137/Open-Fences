@@ -358,7 +358,7 @@ LRESULT FenceWindow::OnSize(UINT msg, WPARAM wp, LPARAM lp)     {
         // when the fence shrinks). Skip while collapsing: the tiny height
         // would crush every icon's row and the layout would be lost on
         // expand. RelayoutIcons redraws on its own.
-        if (!m_collapsed) RelayoutIcons();
+        if (!m_collapsed) ReflowIcons();
         else                    Redraw();
     }
     return 0;

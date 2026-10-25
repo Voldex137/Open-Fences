@@ -135,6 +135,20 @@ void FenceWindow::RelayoutIcons() {
     Redraw();
 }
 
+void FenceWindow::ReflowIcons() {
+    if (m_collapsed) return;
+    const auto& app = m_render->Appearance();
+    if (app.displayMode == 1 || SearchActive()) { RelayoutIcons(); return; }
+    IconGrid g = GetIconGrid();
+    std::vector<std::pair<float, float>> pos;
+    pos.reserve(m_icons.size());
+    for (auto& ic : m_icons) pos.push_back({ ic.x, ic.y });
+    auto order = IconGridMath::ReadingOrder(g, pos, app.fillDir == 1);
+    for (int k = 0; k < (int)order.size(); k++)
+        PlaceIconAt(m_icons[order[k]], IconGridMath::CellForSequence(g, k, app.fillDir == 1));
+    Redraw();
+}
+
 void FenceWindow::SyncDesktopIconSize(int physicalPx) {
     if (!m_hwnd || physicalPx <= 0) return;
     // Never fight a live gesture — the icon being dragged (or the whole

@@ -46,6 +46,7 @@ struct FenceAppearance {
     float fontSize   = 12.0f;
     float iconSize   = 11.0f;   // icon *label* font size
     int   titleAlign = 0;       // title text: 0 = left, 1 = center, 2 = right
+    int   fillDir    = 0;       // grid fill order: 0 = horizontal (row by row), 1 = vertical
     int   displayMode = 0;      // 0 = grid (icons in a grid), 1 = list (one per row)
     WCHAR fontName[64] = L"Segoe UI";
 

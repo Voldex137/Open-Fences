@@ -1,5 +1,6 @@
 #pragma once
 
+#include <utility>
 #include <vector>
 
 // Geometry of a fence's icon grid, independent of any window: cell (r, c) has
@@ -29,5 +30,18 @@ int FindFreeCell(const IconGrid& g, int prefer, const std::vector<int>& occupied
 // the drag direction `dirX` (< 0 left, otherwise right), then the other side;
 // a completely full row spills downward before upward. `prefer` when full.
 int FindPushCell(const IconGrid& g, int prefer, const std::vector<int>& occupied, int dirX);
+
+// Cell for the k-th icon of a sequence: row by row (left to right) when
+// `vertical` is false, column by column (top to bottom) when it is true.
+// Wraps into the next row/column; k past the grid clamps to the last cell.
+int CellForSequence(const IconGrid& g, int k, bool vertical);
+
+// Indices of `positions` (icon top-left corners) in reading order, judged by the
+// row/column each icon sits in WITHOUT clamping to the grid, so a layout made on
+// a larger grid keeps its order. Horizontal: by row, then column; vertical: by
+// column, then row. Ties keep the original order.
+std::vector<int> ReadingOrder(const IconGrid& g,
+                              const std::vector<std::pair<float, float>>& positions,
+                              bool vertical);
 
 }  // namespace IconGridMath

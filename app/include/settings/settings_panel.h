@@ -128,6 +128,8 @@ private:
     RECT m_thPlus = {};
     RECT m_titlePosSeg[3] = {};   // title alignment: left / center / right
     RECT m_displayModeSeg[2] = {}; // display mode: grid / list
+    RECT m_fillDirSeg[2] = {};     // grid fill direction: horizontal / vertical
+    float m_fillDirLblY = 0;
     RECT m_deleteBtn = {};
     float m_rowH = 26.0f;
     // Label-band Y positions for drawing (set by ComputeLayout)

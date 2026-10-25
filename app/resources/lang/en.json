@@ -50,5 +50,8 @@
   "settings.display_mode": "Display Mode",
   "settings.mode.grid": "Grid",
   "settings.mode.list": "List",
+  "settings.fill_direction": "Fill direction",
+  "settings.fill.horizontal": "Horizontal",
+  "settings.fill.vertical": "Vertical",
   "settings.delete_fence": "Delete Fence"
 }

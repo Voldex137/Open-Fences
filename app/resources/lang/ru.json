@@ -50,5 +50,8 @@
   "settings.display_mode": "Режим отображения",
   "settings.mode.grid": "Сетка",
   "settings.mode.list": "Список",
+  "settings.fill_direction": "Направление заполнения",
+  "settings.fill.horizontal": "Горизонтально",
+  "settings.fill.vertical": "Вертикально",
   "settings.delete_fence": "Удалить ограждение"
 }

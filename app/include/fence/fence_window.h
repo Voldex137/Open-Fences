@@ -47,6 +47,9 @@ public:
     /// Re-snap every icon onto the icon grid and resolve overlaps. Call after
     /// anything that moves the grid (resize, title-bar height change).
     void RelayoutIcons();
+    // Grid mode: puts the icons back in reading order (see Appearance().fillDir)
+    // on the current grid, so the layout follows the window size both ways.
+    void ReflowIcons();
     /// Follow a desktop icon-size change (polled by the owner window, which
     /// measures the live size once per tick via QueryDesktopIconSizePx and
     /// passes it to every fence): adopt the new glyph/cell metrics, re-seat

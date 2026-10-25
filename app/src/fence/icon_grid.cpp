@@ -81,4 +81,34 @@ int FindPushCell(const IconGrid& g, int prefer, const std::vector<int>& occupied
     return prefer;   // fence completely full — overlap unavoidable
 }
 
+int CellForSequence(const IconGrid& g, int k, bool vertical) {
+    int total = g.cols * g.rows;
+    if (total <= 0) return 0;
+    if (k < 0) k = 0;
+    if (k >= total) k = total - 1;
+    if (!vertical) return k;
+    int col = k / g.rows, row = k % g.rows;
+    return row * g.cols + col;
+}
+
+std::vector<int> ReadingOrder(const IconGrid& g,
+                              const std::vector<std::pair<float, float>>& positions,
+                              bool vertical) {
+    struct Key { int major, minor, idx; };
+    std::vector<Key> keys;
+    keys.reserve(positions.size());
+    for (int i = 0; i < (int)positions.size(); i++) {
+        int col = (int)std::floor((positions[i].first  - g.x0) / g.cw + 0.5f);
+        int row = (int)std::floor((positions[i].second - g.y0) / g.ch + 0.5f);
+        keys.push_back(vertical ? Key{ col, row, i } : Key{ row, col, i });
+    }
+    std::stable_sort(keys.begin(), keys.end(), [](const Key& a, const Key& b) {
+        return a.major != b.major ? a.major < b.major : a.minor < b.minor;
+    });
+    std::vector<int> order;
+    order.reserve(keys.size());
+    for (auto& k : keys) order.push_back(k.idx);
+    return order;
+}
+
 }  // namespace IconGridMath

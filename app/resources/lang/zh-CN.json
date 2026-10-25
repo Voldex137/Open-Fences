@@ -50,5 +50,8 @@
   "settings.display_mode": "显示方式",
   "settings.mode.grid": "网格",
   "settings.mode.list": "列表",
+  "settings.fill_direction": "填充方向",
+  "settings.fill.horizontal": "横向",
+  "settings.fill.vertical": "纵向",
   "settings.delete_fence": "删除围栏"
 }

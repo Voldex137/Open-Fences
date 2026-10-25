@@ -158,6 +158,17 @@ void SettingsPanel::OnLButtonDown(int mx, int my) {
     }
     case HIT_PANEL_MORE:    ChoosePanelColor(); break;
     case HIT_TITLE_MORE:    ChooseTitleColor(); break;
+    case HIT_FILLDIR0: case HIT_FILLDIR0 + 1: {
+        auto& app = m_fence->GetRender().Appearance();
+        int dir = id - HIT_FILLDIR0;
+        if (app.fillDir != dir) {
+            app.fillDir = dir;
+            ApplyToFence();
+            m_fence->ReflowIcons();
+            Repaint();
+        }
+        break;
+    }
     case HIT_DISPMODE0: case HIT_DISPMODE0 + 1: {
         auto& app = m_fence->GetRender().Appearance();
         int mode = id - HIT_DISPMODE0;

@@ -60,6 +60,7 @@ json SaveFence(FenceWindow& f) {
     jf["titleColor"]= { app.title[0], app.title[1], app.title[2], app.title[3] };
     jf["titleAlign"]= app.titleAlign;
     jf["displayMode"]= app.displayMode;
+    jf["fillDir"]    = app.fillDir;
     jf["source"]    = ToUtf8(d.sourceFolder);
     jf["sortCol"]   = d.sortCol;
     jf["sortAsc"]   = d.sortAsc;
@@ -98,6 +99,7 @@ void LoadFence(const json& jf) {
     GetColor4(jf, "titleColor", app.title);
     app.titleAlign = jf.value("titleAlign", app.titleAlign);
     app.displayMode = jf.value("displayMode", app.displayMode);
+    app.fillDir     = jf.value("fillDir", app.fillDir);
     app.titleH     = jf.value("titleH", app.titleH);
     app.fontSize   = jf.value("fontSize", app.fontSize);
     if (jf.contains("fontName") && jf["fontName"].is_string()) {

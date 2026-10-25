@@ -83,7 +83,29 @@ static void TestFindPushCell() {
     Check(FindPushCell(g, 6, full, 1) == 6, "a completely full grid returns the preferred cell");
 }
 
+static void TestSequence() {
+    IconGrid g = Grid();   // 4 cols x 3 rows
+    Check(CellForSequence(g, 5, false) == 5, "horizontal fill is row-major");
+    Check(CellForSequence(g, 1, true) == 4, "vertical fill goes down first");
+    Check(CellForSequence(g, 3, true) == 1, "vertical fill wraps into the next column");
+    Check(CellForSequence(g, 99, false) == 11, "past the grid clamps to the last cell");
+}
+
+static void TestReadingOrder() {
+    IconGrid g = Grid();
+    std::vector<std::pair<float, float>> p = { { 84, 30 }, { 4, 30 }, { 4, 120 } };
+    auto h = ReadingOrder(g, p, false);
+    Check(h.size() == 3 && h[0] == 1 && h[1] == 0 && h[2] == 2, "horizontal order is by row then column");
+    auto v = ReadingOrder(g, p, true);
+    Check(v[0] == 1 && v[1] == 2 && v[2] == 0, "vertical order is by column then row");
+    std::vector<std::pair<float, float>> far = { { 4 + 80 * 9, 30 }, { 4 + 80 * 7, 30 } };
+    auto f = ReadingOrder(g, far, false);
+    Check(f[0] == 1 && f[1] == 0, "off-grid positions are not clamped");
+}
+
 int main() {
+    TestSequence();
+    TestReadingOrder();
     TestCellOf();
     TestCellOrigin();
     TestFindFreeCell();

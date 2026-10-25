@@ -67,7 +67,7 @@ SettingsPanel::SettingsPanel(FenceWindow* fence) : m_fence(fence) {
     int waH = mi.rcWork.bottom - mi.rcWork.top;
 
     m_fontRows = 5;
-    auto heightFor = [&](int rows) { return (int)((527 + rows * 26) * m_s); };
+    auto heightFor = [&](int rows) { return (int)((583 + rows * 26) * m_s); };
     m_panelH = heightFor(m_fontRows);
     while (m_panelH > waH && m_fontRows > 3) { m_fontRows--; m_panelH = heightFor(m_fontRows); }
     m_panelW = (int)(360 * m_s);
