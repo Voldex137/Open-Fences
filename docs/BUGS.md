@@ -25,6 +25,9 @@ Fixed ones are kept as a record. Newest first.
 
 ## Open
 
+- **A DirectWrite text format per visible font row on every settings repaint**
+  (`settings_panel_draw.cpp`, `DrawFontList`): create-and-release at slider-drag frequency; the visible rows
+  could be cached until the list scrolls.
 - **Brushes allocated on every repaint.** `render_draw.cpp` creates solid-colour brushes (selection plates,
   search box, caret, rename box, scrollbar, drag-over ring) per frame, although the project's own rule is "no
   per-frame heap allocations" and the title bar / marquee / chevron already use cached brushes. Candidates for a

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <initializer_list>
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -38,6 +40,24 @@ private:
     // the same members so they can never drift apart.
     void ComputeLayout();
     void DrawPanel();
+    // Painting steps and helpers (settings_panel_draw.cpp)
+    void DrawSurface();
+    void DrawHeader();
+    void DrawFontList();
+    void DrawSlider(const RECT& rc, float t01);
+    void DrawSliders(const FenceAppearance& app);
+    void DrawSwatch(const RECT& rc, ID2D1Brush* fill, bool selected, int hitId);
+    void DrawMoreButton(const RECT& rc, int hitId);
+    void DrawColorSwatches(const FenceAppearance& app);
+    void DrawSegments(const wchar_t* caption, float labelY, std::initializer_list<const wchar_t*> labels,
+                      const RECT* rects, int active, int hitBase);
+    void DrawTitleHeightStepper(const FenceAppearance& app);
+    void DrawDeleteButton();
+    void FillRounded(const RECT& rc, float radius, ID2D1Brush* brush);
+    void DrawString(const std::wstring& text, const RECT& rc, IDWriteTextFormat* format, ID2D1Brush* brush);
+    void DrawHoverRing(const RECT& rc, int hitId);
+    void DrawLabel(const std::wstring& text, float y);
+    void DrawValueRight(const std::wstring& text, float y);
     void Repaint();
     void ApplyToFence();
     void CreatePanelBrushes();
