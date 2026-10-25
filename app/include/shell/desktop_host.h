@@ -9,6 +9,16 @@ namespace Desktop {
 // shell, or Progman when there is no icon list. Null when explorer is not up.
 HWND FindIconListHost();
 
+// The grid the desktop snaps its own icons to, in the icon list's client
+// coordinates (physical pixels): cell size and the offset of cell (0, 0).
+struct IconGrid {
+    bool ok = false;
+    HWND list = nullptr;
+    int cellW = 0, cellH = 0;
+    int originX = 0, originY = 0;
+};
+IconGrid QueryIconGrid();
+
 // Makes the process DPI aware, preferring Per-Monitor V2. Without it Windows
 // virtualizes the process at 96 DPI on scaled displays and bitmap-upscales every
 // window (blurry icons and text at 125% / 150%). Per-Monitor V2 is also the

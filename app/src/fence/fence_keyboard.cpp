@@ -111,6 +111,8 @@ LRESULT FenceWindow::OnTimer(UINT msg, WPARAM wp, LPARAM lp) {
     } else if (wp == 2) {
         KillTimer(m_hwnd, 2);
         CaptureBackdrop();
+    } else if (wp == 4) {
+        CollapseOnOutsideClick();
     } else if (wp == 5) {
         KillTimer(m_hwnd, 5);
         RefreshFromSource();

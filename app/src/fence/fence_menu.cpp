@@ -10,6 +10,8 @@
 #include <shlobj.h>
 #include <shobjidl.h>
 #include <algorithm>
+#include <functional>
+#include <vector>
 
 namespace {
 
@@ -92,10 +94,14 @@ LRESULT FenceWindow::OnRButtonUp(UINT msg, WPARAM wp, LPARAM lp) {
 
     // Icon → the real Explorer context menu; if the shell cannot provide
     // one, fall back to the fence menu.
-    if (iconHit >= 0 && ShowIconShellMenu(iconHit, screen))
+    m_modalUi = true;   // the menu lives in other windows; a click there is not "outside"
+    if (iconHit >= 0 && ShowIconShellMenu(iconHit, screen)) {
+        m_modalUi = false;
         return 0;
+    }
 
     ShowFenceMenu(iconHit, screen, cli);
+    m_modalUi = false;
     return 0;
 }
 
@@ -104,8 +110,27 @@ LRESULT FenceWindow::OnRButtonUp(UINT msg, WPARAM wp, LPARAM lp) {
 // shell could not produce a menu.
 bool FenceWindow::ShowIconShellMenu(int iconHit, POINT screenPt) {
     bool invoked = false, removeChosen = false, renameChosen = false;
-    if (!ShellMenu::RunForPath(m_hwnd, m_icons[iconHit].path, m_icons[iconHit].name, screenPt,
-                               invoked, removeChosen, renameChosen))
+
+    // The menu applies to the whole selection when the clicked icon is part of it.
+    // The shell builds one menu per folder, so only the selected icons that sit in
+    // the clicked icon's folder join the menu; "remove" still covers all of them.
+    auto parentOf = [](const std::wstring& p) {
+        size_t cut = p.find_last_of(L"\\/");
+        return cut == std::wstring::npos ? std::wstring() : p.substr(0, cut);
+    };
+    std::wstring clickedParent = parentOf(m_icons[iconHit].path);
+    std::vector<std::wstring> paths{ m_icons[iconHit].path };
+    std::vector<int> selected;   // every selected icon, the clicked one first
+    selected.push_back(iconHit);
+    for (int i = 0; i < (int)m_icons.size(); i++) {
+        if (i == iconHit || !IsPathSelected(m_icons[i].path)) continue;
+        selected.push_back(i);
+        if (_wcsicmp(parentOf(m_icons[i].path).c_str(), clickedParent.c_str()) == 0)
+            paths.push_back(m_icons[i].path);
+    }
+
+    if (!ShellMenu::RunForPaths(m_hwnd, paths, m_icons[iconHit].name, screenPt,
+                                invoked, removeChosen, renameChosen))
         return false;
 
     if (renameChosen) {
@@ -114,12 +139,17 @@ bool FenceWindow::ShowIconShellMenu(int iconHit, POINT screenPt) {
         SelectOnly(iconHit);
         EnterIconRename(iconHit);
     } else if (removeChosen) {
-        RemoveIconAt(iconHit);
+        // Highest index first, so the remaining indices stay valid.
+        std::sort(selected.begin(), selected.end(), std::greater<int>());
+        for (int idx : selected) RemoveIconAt(idx);
     } else if (invoked) {
-        // If the shell command got rid of the file (e.g. Delete),
-        // don't leave a dangling icon behind in the fence.
-        if (GetFileAttributesW(m_icons[iconHit].path.c_str()) == INVALID_FILE_ATTRIBUTES)
-            RemoveIconAt(iconHit);
+        // If the shell command got rid of files (e.g. Delete),
+        // don't leave dangling icons behind in the fence.
+        std::sort(selected.begin(), selected.end(), std::greater<int>());
+        for (int idx : selected)
+            if (idx < (int)m_icons.size() &&
+                GetFileAttributesW(m_icons[idx].path.c_str()) == INVALID_FILE_ATTRIBUTES)
+                RemoveIconAt(idx);
     }
     return true;
 }

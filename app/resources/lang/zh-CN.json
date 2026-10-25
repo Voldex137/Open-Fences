@@ -19,6 +19,7 @@
   "fence.delete": "删除围栏",
   "fence.remove": "移除",
   "fence.remove_from_fence": "从围栏移除",
+  "fence.remove_n_from_fence": "个项目（从窗口移除）",
   "fence.map_folder": "映射文件夹...",
   "fence.unmap_folder": "取消映射",
   "fence.sort_by": "排序方式",

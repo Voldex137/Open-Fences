@@ -19,6 +19,7 @@
   "fence.delete": "Удалить ограждение",
   "fence.remove": "Убрать",
   "fence.remove_from_fence": "Убрать из ограждения",
+  "fence.remove_n_from_fence": "элементов (убрать из окна)",
   "fence.map_folder": "Привязать папку...",
   "fence.unmap_folder": "Отвязать папку",
   "fence.sort_by": "Сортировка",

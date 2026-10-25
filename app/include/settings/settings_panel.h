@@ -28,6 +28,8 @@ public:
     static void Run(FenceWindow* fence);
     /// Same panel, but editing the look new fences start with (tray menu).
     static void RunDefaults();
+    /// True while a panel is on screen (a fence must not fold away under it).
+    static bool IsOpen() { return s_active != nullptr; }
     /// Defensive close used by ~FenceWindow: if the active panel belongs to
     /// `fence`, tear it down so it never references a destroyed fence.
     static void CloseActiveFor(const FenceWindow* fence);
@@ -118,6 +120,9 @@ private:
     // Interaction state
     int  m_dragSlider = 0;        // 0 none, 1 font size, 2 opacity
     bool m_scrollDrag = false;
+    bool m_panelDrag = false;      // dragging the whole panel by an empty area
+    POINT m_panelDragCursor = {};  // cursor (screen) and panel origin when the drag began
+    int m_panelDragX = 0, m_panelDragY = 0;
     int  m_scrollDragStartY = 0;
     int  m_scrollDragStartTop = 0;
     int  m_hover = 0;

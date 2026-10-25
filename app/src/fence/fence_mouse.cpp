@@ -1,4 +1,6 @@
 #include "fence/fence_window.h"
+#include "settings/settings_panel.h"
+#include <cmath>
 #include "render/list_scrollbar.h"
 #include "shell/desktop_host.h"
 #include "core/config.h"
@@ -153,6 +155,50 @@ bool FenceWindow::PressListScrollbar(int mx, int my) {
         SetCapture(m_hwnd);
     }
     return true;
+}
+
+// A folded icon tile behaves like a desktop icon: after a move it snaps to the
+// nearest cell of the desktop's own icon grid.
+void FenceWindow::SnapTileToDesktopGrid() {
+    Desktop::IconGrid g = Desktop::QueryIconGrid();
+    if (!g.ok) return;
+    RECT wr;
+    if (!GetWindowRect(m_hwnd, &wr)) return;
+    POINT p{ wr.left, wr.top };
+    ScreenToClient(g.list, &p);   // the grid lives in the icon list's client space
+    auto snap = [](int v, int origin, int cell) {
+        int n = (int)std::lround((double)(v - origin) / cell);
+        return origin + n * cell;
+    };
+    POINT snapped{ snap(p.x, g.originX, g.cellW), snap(p.y, g.originY, g.cellH) };
+    if (snapped.x < 0) snapped.x = g.originX;
+    if (snapped.y < 0) snapped.y = g.originY;
+    ClientToScreen(g.list, &snapped);
+    HWND parent = GetParent(m_hwnd);
+    if (parent) ScreenToClient(parent, &snapped);
+    SetWindowPos(m_hwnd, nullptr, snapped.x, snapped.y, 0, 0,
+                 SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    Config::MarkDirty();
+}
+
+// Folder mode: a fence opened from its icon tile folds back when a mouse press
+// that started outside the window ends outside it. Judged on button RELEASE so
+// a file dragged in from the desktop (pressed outside, released inside) still drops.
+void FenceWindow::CollapseOnOutsideClick() {
+    if (!m_popped || m_collapsed) { KillTimer(m_hwnd, 4); m_popped = false; return; }
+    bool down = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) || (GetAsyncKeyState(VK_RBUTTON) & 0x8000);
+    bool released = m_pollWasDown && !down;
+    m_pollWasDown = down;
+    if (!released) return;
+    if (m_modalUi || SettingsPanel::IsOpen() || m_dragIcon >= 0 || m_moving || m_resizeMask || m_marquee ||
+        m_renaming || m_renameIcon >= 0)
+        return;
+    POINT c; GetCursorPos(&c);
+    RECT wr; GetWindowRect(m_hwnd, &wr);
+    if (PtInRect(&wr, c)) return;
+    KillTimer(m_hwnd, 4);
+    m_popped = false;
+    ToggleCollapse();
 }
 
 // Press on a collapsed icon tile: a plain click expands the fence, a drag moves it
@@ -422,6 +468,8 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
             m_moving = false;
             ReleaseCapture();
             ToggleCollapse();
+            m_popped = !m_collapsed;   // opened from the tile: folds back on an outside click
+            if (m_popped) { m_pollWasDown = false; SetTimer(m_hwnd, 4, 30, nullptr); }
             return 0;
         }
     }
@@ -447,6 +495,8 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
         SettleDragGroup();
     }
     bool geomChanged = m_moving || m_resizeMask;
+    if (m_moving && m_collapsed && m_render->Appearance().collapseStyle == 1)
+        SnapTileToDesktopGrid();
     m_moving = false;
     m_resizeMask = 0;
     if (wasBusy) ReleaseCapture();

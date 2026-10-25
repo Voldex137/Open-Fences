@@ -222,6 +222,7 @@ void FenceWindow::ToggleCollapse() {
     } else {
         // Collapse down to just the title bar
         m_collapsed = true;
+        m_popped = false;
         m_expandedH = (int)m_render->Height();
         m_expandedW = (int)m_render->Width();
         int w, h;

@@ -16,38 +16,47 @@ namespace ShellMenu {
 // let the shell fill a popup (command ids in [1, 0x7FFF]), append our single
 // fence-specific verb above that range, then dispatch the chosen id.
 
-HRESULT CreateForPath(const std::wstring& path, IContextMenu** ppCM) {
+HRESULT CreateForPaths(const std::vector<std::wstring>& paths, IContextMenu** ppCM) {
     *ppCM = nullptr;
+    if (paths.empty()) return E_INVALIDARG;
 
-    PIDLIST_ABSOLUTE pidlFull = nullptr;
-    HRESULT hr = SHParseDisplayName(path.c_str(), nullptr, &pidlFull, 0, nullptr);
-    if (FAILED(hr) || !pidlFull) return E_FAIL;
-
-    // Child = the file's own ID (points inside pidlFull); parent = the folder.
-    LPCITEMIDLIST pidlChild = ILFindLastID(pidlFull);
-    PIDLIST_ABSOLUTE pidlParent = ILCloneFull(pidlFull);
-    if (pidlParent) ILRemoveLastID(pidlParent);
+    std::vector<PIDLIST_ABSOLUTE> full;      // owned; the child ids point into these
+    std::vector<PCUITEMID_CHILD> children;
+    HRESULT hr = S_OK;
+    for (const auto& path : paths) {
+        PIDLIST_ABSOLUTE pidl = nullptr;
+        if (FAILED(SHParseDisplayName(path.c_str(), nullptr, &pidl, 0, nullptr)) || !pidl) {
+            hr = E_FAIL;
+            break;
+        }
+        full.push_back(pidl);
+        children.push_back(ILFindLastID(pidl));
+    }
 
     ComPtr<IShellFolder> spParent;
-    ComPtr<IShellFolder> spDesktop;
-    hr = SHGetDesktopFolder(&spDesktop);
     if (SUCCEEDED(hr)) {
-        if (!pidlParent || ILIsEmpty(pidlParent)) {
-            spParent = spDesktop;                    // file lives on the desktop
-        } else {
-            hr = spDesktop->BindToObject(pidlParent, nullptr, IID_PPV_ARGS(&spParent));
+        // Parent = the folder of the first item (the caller keeps all items in one folder).
+        PIDLIST_ABSOLUTE pidlParent = ILCloneFull(full[0]);
+        ComPtr<IShellFolder> spDesktop;
+        hr = SHGetDesktopFolder(&spDesktop);
+        if (SUCCEEDED(hr) && pidlParent) {
+            ILRemoveLastID(pidlParent);
+            if (ILIsEmpty(pidlParent)) spParent = spDesktop;   // file lives on the desktop
+            else hr = spDesktop->BindToObject(pidlParent, nullptr, IID_PPV_ARGS(&spParent));
         }
+        if (pidlParent) CoTaskMemFree(pidlParent);
     }
 
-    if (SUCCEEDED(hr) && spParent && pidlChild) {
-        hr = spParent->GetUIObjectOf(nullptr, 1,
-            reinterpret_cast<PCUITEMID_CHILD_ARRAY>(&pidlChild),
-            IID_IContextMenu, nullptr, (void**)ppCM);
+    if (SUCCEEDED(hr) && spParent) {
+        hr = spParent->GetUIObjectOf(nullptr, (UINT)children.size(), children.data(),
+                                     IID_IContextMenu, nullptr, (void**)ppCM);
     }
-
-    if (pidlParent) CoTaskMemFree(pidlParent);
-    CoTaskMemFree(pidlFull);
+    for (auto* pidl : full) CoTaskMemFree(pidl);
     return hr;
+}
+
+HRESULT CreateForPath(const std::wstring& path, IContextMenu** ppCM) {
+    return CreateForPaths(std::vector<std::wstring>{ path }, ppCM);
 }
 
 // ── "New" submenu (the shell's own NewMenuHandler) ──
@@ -111,16 +120,25 @@ bool RunForPath(HWND hwnd, const std::wstring& path,
                                 const std::wstring& displayName, POINT ptScreen,
                                 bool& invoked, bool& removeChosen,
                                 bool& renameChosen) {
+    return RunForPaths(hwnd, std::vector<std::wstring>{ path }, displayName, ptScreen,
+                       invoked, removeChosen, renameChosen);
+}
+
+bool RunForPaths(HWND hwnd, const std::vector<std::wstring>& paths,
+                 const std::wstring& displayName, POINT ptScreen,
+                 bool& invoked, bool& removeChosen, bool& renameChosen) {
     invoked = removeChosen = renameChosen = false;
+    if (paths.empty()) return false;
+    const std::wstring& path = paths[0];
 
     ComPtr<IContextMenu> spCM;
-    if (FAILED(CreateForPath(path, &spCM)) || !spCM) return false;
+    if (FAILED(CreateForPaths(paths, &spCM)) || !spCM) return false;
 
     HMENU menu = CreatePopupMenu();
     if (!menu) return false;
 
     if (FAILED(spCM->QueryContextMenu(menu, 0, 1, 0x7FFF,
-                                      CMF_EXPLORE | CMF_CANRENAME))) {
+                                      CMF_EXPLORE | (paths.size() == 1 ? CMF_CANRENAME : 0)))) {
         DestroyMenu(menu);
         return false;
     }
@@ -145,8 +163,12 @@ bool RunForPath(HWND hwnd, const std::wstring& path,
     }
 
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    std::wstring rm = std::wstring(L10n::Tr("fence.remove_from_fence")) +
-                      L"  \"" + displayName + L"\"";
+    std::wstring rm;
+    if (paths.size() > 1) {
+        rm = std::to_wstring(paths.size()) + L" " + L10n::Tr("fence.remove_n_from_fence");
+    } else {
+        rm = std::wstring(L10n::Tr("fence.remove_from_fence")) + L"  \"" + displayName + L"\"";
+    }
     AppendMenuW(menu, MF_STRING, kCmdRemoveFromFence, rm.c_str());
 
     // Win11 look first: we repaint the (identical) HMENU contents ourselves,

@@ -159,6 +159,8 @@ private:
     bool PressListScrollbar(int mx, int my);        // true when the press hit the scrollbar
     void PressTitleBar(int mx, int my);
     void PressTile(int mx, int my);
+    void SnapTileToDesktopGrid();     // a collapsed icon tile sits on the desktop icon grid
+    void CollapseOnOutsideClick();    // timer: folder mode folds back after a click elsewhere
     void BeginIconDrag(int hit, int mx, int my);
     void BeginMarquee(int mx, int my, bool addToSelection);
     void UpdateCursorShape(int mx, int my);
@@ -331,6 +333,9 @@ private:
     bool m_chevronDown = false;
     int  m_expandedH = 0;       // full height remembered while collapsed
     int  m_expandedW = 0;       // full width remembered while collapsed (an icon tile is narrower)
+    bool m_popped = false;      // expanded by a click on its icon tile: folds back on an outside click
+    bool m_pollWasDown = false;
+    bool m_modalUi = false;     // a menu is open on this fence: do not fold under it
     bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
     POINT m_tilePressPt = {};
     void CollapsedSize(int& w, int& h) const;   // window size while collapsed

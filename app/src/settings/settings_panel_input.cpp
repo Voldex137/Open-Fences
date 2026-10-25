@@ -138,6 +138,12 @@ void SettingsPanel::OnLButtonDown(int mx, int my) {
     }
     int id = HitTest(mx, my);
     switch (id) {
+    case HIT_NONE:   // empty area (header, gaps, margins): move the panel
+        m_panelDrag = true;
+        GetCursorPos(&m_panelDragCursor);
+        m_panelDragX = m_x; m_panelDragY = m_y;
+        SetCapture(m_hwnd);
+        break;
     case HIT_CLOSE:         m_closing = true; break;
     case HIT_DELETE_FENCE:  m_deleteFence = true; m_closing = true; break;
     case HIT_SIZE_SLIDER:   m_dragSlider = 1; SetCapture(m_hwnd); SetSizeFromX(mx); break;
@@ -233,6 +239,14 @@ void SettingsPanel::OnMouseMove(int mx, int my) {
     }
     if (m_hover != oldHover || m_hoverRow != oldRow) Repaint();
 
+    if (m_panelDrag) {
+        POINT c; GetCursorPos(&c);
+        m_x = m_panelDragX + (c.x - m_panelDragCursor.x);
+        m_y = m_panelDragY + (c.y - m_panelDragCursor.y);
+        SetWindowPos(m_hwnd, nullptr, m_x, m_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        Repaint();
+        return;
+    }
     if (m_dragSlider == 1) SetSizeFromX(mx);
     else if (m_dragSlider == 2) SetOpacityFromX(mx);
     else if (m_scrollDrag) {
@@ -252,7 +266,8 @@ void SettingsPanel::OnMouseMove(int mx, int my) {
 }
 
 void SettingsPanel::OnLButtonUp(int, int) {
-    if (m_dragSlider || m_scrollDrag) {
+    if (m_dragSlider || m_scrollDrag || m_panelDrag) {
+        m_panelDrag = false;
         m_dragSlider = 0;
         m_scrollDrag = false;
         ReleaseCapture();

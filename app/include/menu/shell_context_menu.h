@@ -15,6 +15,10 @@ constexpr int kCmdNewFirst = 0x200;
 // IContextMenu for the file or folder at `path` (any parse name the shell accepts).
 HRESULT CreateForPath(const std::wstring& path, IContextMenu** menu);
 
+// IContextMenu for several items that share one parent folder (the shell cannot
+// build one menu across folders). `paths` must be non-empty.
+HRESULT CreateForPaths(const std::vector<std::wstring>& paths, IContextMenu** menu);
+
 // Shows the Explorer menu for `path` at `ptScreen` (screen coordinates) with a
 // "remove from fence" entry appended. Returns false only when no system menu
 // could be produced (the caller falls back to the plain fence menu). Sets
@@ -23,6 +27,12 @@ HRESULT CreateForPath(const std::wstring& path, IContextMenu** menu);
 // the in-place rename instead of handing it to Explorer).
 bool RunForPath(HWND hwnd, const std::wstring& path, const std::wstring& displayName,
                 POINT ptScreen, bool& invoked, bool& removeChosen, bool& renameChosen);
+
+// The same for a selection: the menu applies to every path in `paths` (all in
+// one folder; `paths[0]` is the clicked one) and the remove verb reads
+// "Remove N items from fence". Rename is only offered for a single item.
+bool RunForPaths(HWND hwnd, const std::vector<std::wstring>& paths, const std::wstring& displayName,
+                 POINT ptScreen, bool& invoked, bool& removeChosen, bool& renameChosen);
 
 // The shell "New" handler, initialised with `folder` as the target folder.
 HRESULT CreateNewMenuHandler(PCIDLIST_ABSOLUTE folder, IContextMenu** menu);

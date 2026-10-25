@@ -93,6 +93,20 @@ static void ForwardInitPopup(IContextMenu* cm, HMENU m) {
     walk(m);
 }
 
+// "&Open" / "Create &shortcut": the menu is drawn without underlined mnemonics,
+// so the marker is dropped ("&&" is a literal ampersand).
+static std::wstring StripMnemonic(const wchar_t* s) {
+    std::wstring out;
+    for (; *s; ++s) {
+        if (*s == L'&') {
+            if (s[1] == L'&') { out.push_back(L'&'); ++s; }
+            continue;
+        }
+        out.push_back(*s);
+    }
+    return out;
+}
+
 static void WalkMenu(HMENU m, std::vector<CtxItem>& out,
                      const std::wstring& filePath, int depth) {
     int n = GetMenuItemCount(m);
@@ -107,7 +121,7 @@ static void WalkMenu(HMENU m, std::vector<CtxItem>& out,
         CtxItem it;
         if (mii.fType & MFT_SEPARATOR) { it.sep = true; out.push_back(std::move(it)); continue; }
 
-        it.text = text;
+        it.text = StripMnemonic(text);
         it.id = mii.wID;
         it.disabled = (mii.fState & (MFS_DISABLED | MFS_GRAYED)) != 0;
         it.checked = (mii.fState & MFS_CHECKED) != 0;

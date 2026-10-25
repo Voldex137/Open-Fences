@@ -1,4 +1,5 @@
 #include "shell/desktop_host.h"
+#include <commctrl.h>
 
 #ifndef DPI_AWARENESS_CONTEXT_UNAWARE
 DECLARE_HANDLE(DPI_AWARENESS_CONTEXT);
@@ -79,6 +80,44 @@ HWND FindIconListHost() {
          ww = FindWindowExW(nullptr, ww, L"WorkerW", nullptr))
         if (HWND lv = listViewOf(ww)) return lv;
     return progman;   // no icon list (icons disabled?) — best effort
+}
+
+IconGrid QueryIconGrid() {
+    IconGrid g;
+    HWND lv = FindIconListHost();
+    wchar_t cls[64] = {};
+    if (!lv || !GetClassNameW(lv, cls, 64) || wcscmp(cls, L"SysListView32")) return g;
+
+    DWORD_PTR spacing = 0;
+    if (!SendMessageTimeoutW(lv, LVM_GETITEMSPACING, FALSE, 0, SMTO_ABORTIFHUNG, 250, &spacing))
+        return g;
+    g.cellW = (int)LOWORD(spacing);
+    g.cellH = (int)HIWORD(spacing);
+    if (g.cellW < 16 || g.cellH < 16) return g;
+
+    // Where the grid starts: every desktop icon sits on it, so the first icon's
+    // position modulo the cell size gives the offset. The POINT is filled in
+    // explorer's address space, hence the remote buffer.
+    DWORD pid = 0;
+    GetWindowThreadProcessId(lv, &pid);
+    HANDLE proc = OpenProcess(PROCESS_VM_OPERATION | PROCESS_VM_READ | PROCESS_VM_WRITE, FALSE, pid);
+    if (proc) {
+        void* mem = VirtualAllocEx(proc, nullptr, sizeof(POINT), MEM_COMMIT, PAGE_READWRITE);
+        if (mem) {
+            DWORD_PTR res = 0;
+            POINT pos = {};
+            if (SendMessageTimeoutW(lv, LVM_GETITEMPOSITION, 0, (LPARAM)mem, SMTO_ABORTIFHUNG, 250, &res) &&
+                res && ReadProcessMemory(proc, mem, &pos, sizeof(pos), nullptr)) {
+                g.originX = ((pos.x % g.cellW) + g.cellW) % g.cellW;
+                g.originY = ((pos.y % g.cellH) + g.cellH) % g.cellH;
+            }
+            VirtualFreeEx(proc, mem, 0, MEM_RELEASE);
+        }
+        CloseHandle(proc);
+    }
+    g.list = lv;
+    g.ok = true;
+    return g;
 }
 
 }  // namespace Desktop

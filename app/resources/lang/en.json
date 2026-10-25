@@ -19,6 +19,7 @@
   "fence.delete": "Delete Fence",
   "fence.remove": "Remove",
   "fence.remove_from_fence": "Remove from fence",
+  "fence.remove_n_from_fence": "items from fence",
   "fence.map_folder": "Map Folder...",
   "fence.unmap_folder": "Unmap Folder",
   "fence.sort_by": "Sort by",
