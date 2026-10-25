@@ -58,6 +58,7 @@ add_executable(openfences
     app/src/menu/shell_context_menu.cpp
     app/src/render/render.cpp
     app/src/render/render_draw.cpp
+    app/src/render/list_scrollbar.cpp
     app/src/render/image_filters.cpp
     app/src/render/render_styles.cpp
     app/src/render/render_icons.cpp
@@ -149,4 +150,8 @@ if(OPENFENCES_BUILD_TESTS)
     add_executable(image_filters_test tests/image_filters_test.cpp app/src/render/image_filters.cpp)
     target_include_directories(image_filters_test PRIVATE app/include tests)
     add_test(NAME image_filters COMMAND image_filters_test)
+
+    add_executable(list_scrollbar_test tests/list_scrollbar_test.cpp app/src/render/list_scrollbar.cpp)
+    target_include_directories(list_scrollbar_test PRIVATE app/include tests)
+    add_test(NAME list_scrollbar COMMAND list_scrollbar_test)
 endif()

@@ -97,6 +97,12 @@ float FenceWindow::ListMaxScroll() const {
     return (std::max)(0.0f, totalH - contentH);
 }
 
+ListScrollbar FenceWindow::CurrentListScrollbar() const {
+    float rowH = m_render->Appearance().iconSize * 2.6f;
+    return ComputeListScrollbar((float)m_render->Width(), (float)m_render->Height(), ContentTop(),
+                                (float)VisibleCount() * rowH, m_listScroll);
+}
+
 void FenceWindow::ClampListScroll() {
     float maxS = ListMaxScroll();
     if (m_listScroll > maxS) m_listScroll = maxS;

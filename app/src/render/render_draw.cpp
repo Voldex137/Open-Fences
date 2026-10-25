@@ -3,6 +3,7 @@
 // marquee, border).
 #include "render/render.h"
 #include "core/layout_metrics.h"
+#include "render/list_scrollbar.h"
 #include "core/localization.h"
 
 #include <algorithm>
@@ -509,25 +510,17 @@ void RenderContext::DrawGridCell(const Frame& f, int i, const IconMetrics& m, co
 void RenderContext::DrawListScrollbar(const Frame& f, float bodyTop) {
     if (m_app.displayMode != 1 || f.icons.empty()) return;
     float rowH = m_app.iconSize * 2.6f;
-    float contentH = f.h - bodyTop;
-    float totalH = (float)f.VisibleCount() * rowH;
-    float maxScroll = totalH - contentH;
-    if (maxScroll <= 0) return;
+    ListScrollbar bar = ComputeListScrollbar(f.w, f.h, bodyTop, (float)f.VisibleCount() * rowH, f.scrollY);
+    if (!bar.visible) return;
 
-    float sbW = 6.0f;
-    float sbPad = 2.0f;
-    float trackTop = bodyTop + sbPad;
-    float trackBot = f.h - sbPad;
-    float trackX = f.w - sbW - sbPad;
-    float trackH = trackBot - trackTop;
-    float thumbH = (std::max)(20.0f, trackH * contentH / totalH);
-    float thumbTop = trackTop + (f.scrollY / maxScroll) * (trackH - thumbH);
-
-    D2D1_ROUNDED_RECT track{ { trackX, trackTop, trackX + sbW, trackBot }, sbW * 0.5f, sbW * 0.5f };
+    const float sbW = kListScrollbarWidth;
+    D2D1_ROUNDED_RECT track{ { bar.trackX, bar.trackTop, bar.trackX + sbW, bar.trackBottom },
+                             sbW * 0.5f, sbW * 0.5f };
     auto trackBrush = MakeBrush(f.ctx, D2D1::ColorF(1, 1, 1, 0.08f));
     if (trackBrush) f.ctx.FillRoundedRectangle(track, trackBrush.Get());
 
-    D2D1_ROUNDED_RECT thumb{ { trackX, thumbTop, trackX + sbW, thumbTop + thumbH }, sbW * 0.5f, sbW * 0.5f };
+    D2D1_ROUNDED_RECT thumb{ { bar.trackX, bar.thumbTop, bar.trackX + sbW, bar.thumbTop + bar.thumbHeight },
+                             sbW * 0.5f, sbW * 0.5f };
     auto thumbBrush = MakeBrush(f.ctx, D2D1::ColorF(1, 1, 1, 0.25f));
     if (thumbBrush) f.ctx.FillRoundedRectangle(thumb, thumbBrush.Get());
 }

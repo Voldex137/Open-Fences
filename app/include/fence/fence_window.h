@@ -7,6 +7,7 @@
 #include <memory>
 #include <algorithm>
 #include "render/render.h"
+#include "render/list_scrollbar.h"
 #include "fence/icon_grid.h"
 
 struct IContextMenu;
@@ -141,6 +142,21 @@ private:
     LRESULT OnFenceReshow(UINT msg, WPARAM wp, LPARAM lp);
     LRESULT OnSysCommand(UINT msg, WPARAM wp, LPARAM lp);
     LRESULT OnDestroy(UINT msg, WPARAM wp, LPARAM lp);
+
+    // Mouse handling steps (fence_mouse.cpp)
+    bool PressListScrollbar(int mx, int my);        // true when the press hit the scrollbar
+    void PressTitleBar(int mx, int my);
+    void BeginIconDrag(int hit, int mx, int my);
+    void BeginMarquee(int mx, int my, bool addToSelection);
+    void UpdateCursorShape(int mx, int my);
+    void DragListScrollbar(int my);
+    void TrackIconHover(int mx, int my);
+    void TrackChevronHover(int mx, int my);
+    void MoveMarquee(int mx, int my);
+    void MoveFenceWithCursor(int mx, int my);
+    void ResizeFenceWithCursor(int mx, int my);
+    void DragIcons(int mx, int my);
+    ListScrollbar CurrentListScrollbar() const;     // geometry for the current size and scroll
 
     // Context menus (fence_menu.cpp)
     void RemoveIconAt(int idx);                       // drop one icon and fix selection/hover
