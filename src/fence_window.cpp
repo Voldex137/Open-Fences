@@ -13,7 +13,7 @@
 #include <cmath>
 
 HWND FenceWindow::s_owner = nullptr;
-int  FenceWindow::s_lang = 1; // 0=EN, 1=ZH — default Chinese
+int  FenceWindow::s_lang = 0; // LanguageId; real default comes from Language::DetectSystem()
 
 const wchar_t* FenceWindow::Loc(const wchar_t* en, const wchar_t* zh) {
     return s_lang == 1 ? zh : en;

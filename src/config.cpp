@@ -1,5 +1,6 @@
 #include "config.h"
 #include "fence_window.h"
+#include "language.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)
@@ -214,8 +215,10 @@ bool LoadApp() {
     json j = json::parse(bytes.begin(), bytes.end(), nullptr, false);
     if (j.is_discarded() || !j.is_object()) return false;
 
-    int lang = j.value("language", 1);
-    FenceWindow::SetLanguage(lang == 0 ? 0 : 1);
+    // A missing or unknown value follows the system language instead of a fixed one.
+    int lang = j.value("language", Language::DetectSystem());
+    FenceWindow::SetLanguage(lang == LANG_ID_ZH ? LANG_ID_ZH :
+                             lang == LANG_ID_EN ? LANG_ID_EN : Language::DetectSystem());
 
     if (j.contains("fences") && j["fences"].is_array())
         for (const auto& jf : j["fences"])

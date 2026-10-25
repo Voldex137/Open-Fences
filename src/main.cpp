@@ -11,6 +11,7 @@
 #include "context_menu.h"
 #include "menu_icons.h"
 #include "config.h"
+#include "language.h"
 #include "resource.h"
 #include <vector>
 #include <memory>
@@ -439,29 +440,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     RegisterHotKey(g_owner, 1, MOD_CONTROL | MOD_SHIFT, 'H');
     g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
 
-    // Scale default layout to physical pixels (design values are at 96 DPI)
-    HDC hdc = GetDC(nullptr);
-    float s = GetDeviceCaps(hdc, LOGPIXELSX) / 96.0f;
-    ReleaseDC(nullptr, hdc);
+    // Without a saved language the UI follows the system language (English as fallback).
+    FenceWindow::SetLanguage(Language::DetectSystem());
 
-    // Restore the persisted layout (language, fences, icons, appearance).
-    // Only a missing/unreadable config falls back to the three starter
-    // fences — an empty list is a valid saved state (everything deleted).
-    if (!Config::LoadApp()) {
-        // Default titles follow the startup language (they are fence names,
-        // set once at birth — a later language switch does not rename
-        // existing fences).
-        FenceData fences[] = {
-            { L"f1", FenceWindow::Loc(L"Applications", L"应用"),
-              (int)(50*s),  (int)(50*s),  (int)(280*s), (int)(280*s) },
-            { L"f2", FenceWindow::Loc(L"Documents", L"文档"),
-              (int)(370*s), (int)(50*s),  (int)(280*s), (int)(380*s) },
-            { L"f3", FenceWindow::Loc(L"Projects", L"项目"),
-              (int)(50*s),  (int)(360*s), (int)(280*s), (int)(220*s) },
-        };
-        for (auto& fd : fences)
-            g_fences.push_back(std::make_unique<FenceWindow>(fd));
-    }
+    // Restore the persisted layout (language, fences, icons, appearance). A
+    // first run, an unreadable config and an empty saved list all start with no
+    // fences; the user creates them from the tray menu.
+    Config::LoadApp();
 
     // If explorer's icons are hidden right now (we restarted, or the user
     // hid them before launching us), park immediately instead of sitting
