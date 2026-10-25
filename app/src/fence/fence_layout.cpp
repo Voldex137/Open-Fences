@@ -1,7 +1,7 @@
-#include "fence_window.h"
-#include "fence_metrics.h"
-#include "desktop_host.h"
-#include "config.h"
+#include "fence/fence_window.h"
+#include "fence/fence_metrics.h"
+#include "shell/desktop_host.h"
+#include "core/config.h"
 #include <algorithm>
 #include <cmath>
 

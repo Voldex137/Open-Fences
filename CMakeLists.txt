@@ -23,7 +23,7 @@ FetchContent_Declare(json
 FetchContent_MakeAvailable(json)
 
 # Embed every resources/lang/*.json into the exe as an RCDATA resource named
-# LANG_<NAME>; the loader (app/src/localization.cpp) enumerates them at startup.
+# LANG_<NAME>; the loader (app/src/core/localization.cpp) enumerates them at startup.
 file(GLOB OPENFENCES_LANG_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/app/resources/lang/*.json")
 set(OPENFENCES_LANG_RC "${CMAKE_CURRENT_BINARY_DIR}/lang_resources.rc")
 set(OPENFENCES_LANG_RC_CONTENT "")
@@ -39,28 +39,28 @@ set_source_files_properties("${OPENFENCES_LANG_RC}" PROPERTIES GENERATED TRUE)
 
 add_executable(openfences
     app/src/main.cpp
-    app/src/fence_window.cpp
-    app/src/fence_layout.cpp
-    app/src/icon_grid.cpp
-    app/src/icon_sort.cpp
-    app/src/fence_selection.cpp
-    app/src/fence_sort_filter.cpp
-    app/src/fence_source_folder.cpp
-    app/src/fence_rename.cpp
-    app/src/fence_mouse.cpp
-    app/src/fence_keyboard.cpp
-    app/src/fence_menu.cpp
-    app/src/desktop_host.cpp
-    app/src/fence_drop_target.cpp
-    app/src/shell_context_menu.cpp
-    app/src/render.cpp
-    app/src/settings_panel.cpp
-    app/src/context_menu.cpp
-    app/src/icon_extract.cpp
-    app/src/menu_icons.cpp
-    app/src/config.cpp
-    app/src/localization.cpp
-    app/src/explorer_sort.cpp
+    app/src/fence/fence_window.cpp
+    app/src/fence/fence_layout.cpp
+    app/src/fence/icon_grid.cpp
+    app/src/fence/icon_sort.cpp
+    app/src/fence/fence_selection.cpp
+    app/src/fence/fence_sort_filter.cpp
+    app/src/fence/fence_source_folder.cpp
+    app/src/fence/fence_rename.cpp
+    app/src/fence/fence_mouse.cpp
+    app/src/fence/fence_keyboard.cpp
+    app/src/fence/fence_menu.cpp
+    app/src/shell/desktop_host.cpp
+    app/src/fence/fence_drop_target.cpp
+    app/src/menu/shell_context_menu.cpp
+    app/src/render/render.cpp
+    app/src/settings/settings_panel.cpp
+    app/src/menu/context_menu.cpp
+    app/src/render/icon_extract.cpp
+    app/src/render/menu_icons.cpp
+    app/src/core/config.cpp
+    app/src/core/localization.cpp
+    app/src/shell/explorer_sort.cpp
     app/src/app.rc
     ${OPENFENCES_LANG_RC}
 )
@@ -88,7 +88,7 @@ if(OPENFENCES_BUILD_TOOLS)
     add_executable(diag tools/desktop_diag.cpp)
     target_link_libraries(diag PRIVATE user32 comctl32)
 
-    add_executable(icon_diag tools/icon_diag.cpp app/src/icon_extract.cpp)
+    add_executable(icon_diag tools/icon_diag.cpp app/src/render/icon_extract.cpp)
     target_include_directories(icon_diag PRIVATE app/include)
     target_link_libraries(icon_diag PRIVATE user32 shell32 shlwapi ole32 uuid comctl32)
 
@@ -114,7 +114,7 @@ endif()
 option(OPENFENCES_BUILD_TESTS "Build the tests in tests/" OFF)
 if(OPENFENCES_BUILD_TESTS)
     enable_testing()
-    add_executable(l10n_test tests/l10n_test.cpp app/src/localization.cpp)
+    add_executable(l10n_test tests/l10n_test.cpp app/src/core/localization.cpp)
     target_include_directories(l10n_test PRIVATE app/include)
     target_link_libraries(l10n_test PRIVATE shell32 nlohmann_json::nlohmann_json)
     # The loader also reads "<exe dir>\lang\*.json", so the test needs no embedded resources.
@@ -123,11 +123,11 @@ if(OPENFENCES_BUILD_TESTS)
                 "${CMAKE_CURRENT_SOURCE_DIR}/app/resources/lang" "$<TARGET_FILE_DIR:l10n_test>/lang")
     add_test(NAME l10n COMMAND l10n_test)
 
-    add_executable(icon_grid_test tests/icon_grid_test.cpp app/src/icon_grid.cpp)
+    add_executable(icon_grid_test tests/icon_grid_test.cpp app/src/fence/icon_grid.cpp)
     target_include_directories(icon_grid_test PRIVATE app/include tests)
     add_test(NAME icon_grid COMMAND icon_grid_test)
 
-    add_executable(icon_sort_test tests/icon_sort_test.cpp app/src/icon_sort.cpp)
+    add_executable(icon_sort_test tests/icon_sort_test.cpp app/src/fence/icon_sort.cpp)
     target_include_directories(icon_sort_test PRIVATE app/include tests)
     target_link_libraries(icon_sort_test PRIVATE shlwapi)
     add_test(NAME icon_sort COMMAND icon_sort_test)

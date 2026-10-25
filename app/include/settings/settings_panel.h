@@ -4,11 +4,11 @@
 #include <windows.h>
 #include <d2d1.h>
 #include <dwrite.h>
-#include "com_ptr.h"
+#include "core/com_ptr.h"
 #include <string>
 #include <vector>
 #include <memory>
-#include "render.h"
+#include "render/render.h"
 
 class FenceWindow;
 

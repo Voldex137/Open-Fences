@@ -1,6 +1,6 @@
-#include "render.h"
-#include "fence_window.h"   // FenceWindow::DesktopHost (desktop tree discovery)
-#include "icon_extract.h"
+#include "render/render.h"
+#include "fence/fence_window.h"   // FenceWindow::DesktopHost (desktop tree discovery)
+#include "render/icon_extract.h"
 #include <shellapi.h>
 #include <shlobj.h>
 #include <commctrl.h>       // LVM_GETITEMRECT / LVIR_ICON

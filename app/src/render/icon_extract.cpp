@@ -1,4 +1,4 @@
-#include "icon_extract.h"
+#include "render/icon_extract.h"
 
 bool ExtractBitmapPixels(HBITMAP hb, std::vector<BYTE>& out, int& w, int& h) {
     BITMAP bm = {};

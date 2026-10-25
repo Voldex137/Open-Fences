@@ -1,10 +1,10 @@
-#include "fence_window.h"
-#include "localization.h"
-#include "settings_panel.h"
-#include "context_menu.h"
-#include "menu_icons.h"
-#include "config.h"
-#include "shell_context_menu.h"
+#include "fence/fence_window.h"
+#include "core/localization.h"
+#include "settings/settings_panel.h"
+#include "menu/context_menu.h"
+#include "render/menu_icons.h"
+#include "core/config.h"
+#include "menu/shell_context_menu.h"
 #include <windowsx.h>
 #include <shlobj.h>
 #include <shobjidl.h>

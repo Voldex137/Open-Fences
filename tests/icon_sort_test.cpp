@@ -1,5 +1,5 @@
 // Ordering of icons in a folder-backed fence (Explorer-like).
-#include "icon_sort.h"
+#include "fence/icon_sort.h"
 #include "test_util.h"
 
 #include <algorithm>

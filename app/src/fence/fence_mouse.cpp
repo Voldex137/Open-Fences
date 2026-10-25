@@ -1,6 +1,6 @@
-#include "fence_window.h"
-#include "desktop_host.h"
-#include "config.h"
+#include "fence/fence_window.h"
+#include "shell/desktop_host.h"
+#include "core/config.h"
 #include <windowsx.h>
 #include <shellapi.h>
 #include <commctrl.h>

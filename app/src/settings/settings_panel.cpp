@@ -1,8 +1,8 @@
-#include "settings_panel.h"
-#include "desktop_host.h"
-#include "localization.h"
-#include "fence_window.h"
-#include "config.h"
+#include "settings/settings_panel.h"
+#include "shell/desktop_host.h"
+#include "core/localization.h"
+#include "fence/fence_window.h"
+#include "core/config.h"
 #include <windowsx.h>
 #include <commdlg.h>
 #include <algorithm>

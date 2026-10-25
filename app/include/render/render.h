@@ -5,11 +5,11 @@
 #include <d2d1.h>
 #include <wincodec.h>
 #include <dwrite.h>
-#include "com_ptr.h"
+#include "core/com_ptr.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "icon_entry.h"
+#include "fence/icon_entry.h"
 
 // Simple COM/OLE init RAII. OleInitialize is required for RegisterDragDrop
 // and other OLE features (drag-and-drop, clipboard); it internally calls

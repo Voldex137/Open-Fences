@@ -1,6 +1,6 @@
-#include "fence_drop_target.h"
-#include "fence_window.h"
-#include "com_ptr.h"
+#include "fence/fence_drop_target.h"
+#include "fence/fence_window.h"
+#include "core/com_ptr.h"
 #include <shlobj.h>
 #include <shobjidl.h>
 #include <string>

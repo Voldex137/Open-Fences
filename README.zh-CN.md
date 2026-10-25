@@ -58,13 +58,20 @@ cmake --build build --config Release --target openfences
 openFences/
 ├── CMakeLists.txt
 ├── app/                       # 应用程序
-│   ├── include/               # 头文件
-│   ├── src/                   # 源文件（main.cpp、fence_window.cpp、render.cpp 等）
+│   ├── include/               # 头文件，目录结构与 src/ 对应
+│   ├── src/
+│   │   ├── main.cpp           # 入口、托盘、桌面管理
+│   │   ├── fence/             # 围栏窗口：布局、鼠标、键盘、菜单、排序、映射文件夹
+│   │   ├── render/            # Direct2D 渲染、图标提取、菜单图标
+│   │   ├── menu/              # Win11 风格右键菜单、Explorer 外壳菜单
+│   │   ├── settings/          # 外观设置面板
+│   │   ├── shell/             # 桌面宿主 / DPI、Explorer 排序方式
+│   │   └── core/              # config.json、本地化、COM 指针辅助、资源 ID
 │   └── resources/             # app.ico、lang/*.json（每种界面语言一个文件）
 ├── tools/                     # 研究性试验与诊断程序（默认不构建）
-├── tests/                     # 单元测试（本地化）
+├── tests/                     # 单元测试（本地化、图标网格、图标排序）
 ├── experiments/legacy-hook/   # 早期设计遗留、未使用的 DLL
-├── docs/                      # 设计笔记、LOCALIZATION.md
+├── docs/                      # 设计笔记、LOCALIZATION.md、BUGS.md
 ├── CLAUDE.md                  # 开发指引（供 AI 辅助）
 └── README*.md
 ```

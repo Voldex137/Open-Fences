@@ -58,13 +58,20 @@ Output: `build/Release/openfences.exe` (~780 KB, statically linked CRT).
 openFences/
 ├── CMakeLists.txt
 ├── app/                       # the application
-│   ├── include/               # headers
-│   ├── src/                   # sources (main.cpp, fence_window.cpp, render.cpp, ...)
+│   ├── include/               # headers, mirrored by the folders under src/
+│   ├── src/
+│   │   ├── main.cpp           # entry point, tray, desktop management
+│   │   ├── fence/             # the fence window: layout, mouse, keyboard, menus, sorting, mapped folders
+│   │   ├── render/            # Direct2D rendering, icon extraction, menu glyphs
+│   │   ├── menu/              # Windows 11 style context menu, Explorer shell menus
+│   │   ├── settings/          # appearance settings panel
+│   │   ├── shell/             # desktop host / DPI, Explorer sort order
+│   │   └── core/              # config.json, localization, COM pointer helper, resource ids
 │   └── resources/             # app.ico, lang/*.json (one file per UI language)
 ├── tools/                     # research spikes and diagnostics (off by default)
-├── tests/                     # unit tests (localization)
+├── tests/                     # unit tests (localization, icon grid, icon sorting)
 ├── experiments/legacy-hook/   # unused DLL from an early design
-├── docs/                      # design notes, LOCALIZATION.md
+├── docs/                      # design notes, LOCALIZATION.md, BUGS.md
 ├── CLAUDE.md                  # development guide for AI assistants
 └── README*.md
 ```

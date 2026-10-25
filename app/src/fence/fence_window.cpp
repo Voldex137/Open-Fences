@@ -1,9 +1,9 @@
-#include "fence_window.h"
-#include "desktop_host.h"
-#include "fence_drop_target.h"
-#include "shell_context_menu.h"
-#include "settings_panel.h"
-#include "config.h"
+#include "fence/fence_window.h"
+#include "shell/desktop_host.h"
+#include "fence/fence_drop_target.h"
+#include "menu/shell_context_menu.h"
+#include "settings/settings_panel.h"
+#include "core/config.h"
 #include <shellapi.h>
 #include <shobjidl.h>   // IContextMenu
 #include <shlwapi.h>

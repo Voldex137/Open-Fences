@@ -1,6 +1,6 @@
 // Checks the localization layer against the real files in resources/lang
 // (copied next to the test exe by CMake as "lang\").
-#include "localization.h"
+#include "core/localization.h"
 
 #include <windows.h>
 #include <cstdio>

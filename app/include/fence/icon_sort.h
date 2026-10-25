@@ -1,6 +1,6 @@
 #pragma once
 
-#include "icon_entry.h"
+#include "fence/icon_entry.h"
 
 // Ordering of icons in a mapped (folder-backed) fence, like Explorer's: folders
 // first, then by `column` (0 name, 1 date modified, 2 size, 3 type), the name

@@ -11,19 +11,28 @@ An open-source alternative to Stardock Fences: a Windows desktop icon grouping t
 - **Build:** CMake 3.20+, MSVC (VS2017 generator), x64, `/MT` statically linked CRT
 - **Output:** a single exe (~780 KB), no dependencies, portable
 
-## Source files (`app/src/`, headers in `app/include/`)
+## Source files (`app/src/<folder>/`, headers in `app/include/<folder>/`)
 
-| File | Responsibility |
-|------|----------------|
-| `main.cpp` | Entry point, tray menu, desktop icon management, hide/show scheduling |
-| `fence_window.cpp` | Fence window: create, drag, resize, collapse, rename, context menu |
-| `render.cpp` | Direct2D rendering pipeline: frosted glass (Acrylic), border, text, layout |
-| `context_menu.cpp` | Windows 11 style Fluent custom-drawn menu + low-level hook for dismissal |
-| `settings_panel.cpp` | Appearance settings panel (background colour, title colour, alignment, font size, ...) |
-| `config.cpp` | Configuration persistence (read/write JSON, autosave, autostart registry key) |
-| `localization.cpp` | Key-based localization: loads `app/resources/lang/*.json` (embedded + external), system language detection, `L10n::Tr(key)` |
-| `icon_extract.cpp` | Extracts icon pixel data from files and shortcuts |
-| `menu_icons.cpp` | Programmatic rasterisation of menu item icons (vector glyphs) |
+| Folder | Files | Responsibility |
+|--------|-------|----------------|
+| `src/` | `main.cpp` | Entry point, tray menu, desktop icon management, hide/show scheduling |
+| `fence/` | `fence_window.cpp` | Window lifecycle, drawing glue, `WndProc` dispatcher |
+| | `fence_mouse.cpp`, `fence_keyboard.cpp` | Mouse (drag, resize, marquee, wheel) and keyboard/timer handlers |
+| | `fence_menu.cpp` | Fence and icon context menus, "Map Folder", shell "New" items |
+| | `fence_layout.cpp`, `icon_grid.cpp` | Grid/list layout; pure cell geometry (tested) |
+| | `fence_selection.cpp`, `fence_rename.cpp` | Selection and marquee; in-place rename of the fence and of icons |
+| | `fence_sort_filter.cpp`, `icon_sort.cpp` | Sort state, search filter; icon ordering (tested) |
+| | `fence_source_folder.cpp` | Folder-backed fences: enumeration and change watching |
+| | `fence_drop_target.cpp` | OLE drop target (files and shell objects) |
+| `render/` | `render.cpp` | Direct2D pipeline: frosted glass (Acrylic), border, text, icons |
+| | `icon_extract.cpp`, `menu_icons.cpp` | Icon pixel extraction; programmatic menu glyphs |
+| `menu/` | `context_menu.cpp` | Windows 11 style Fluent custom-drawn menu + low-level hook for dismissal |
+| | `shell_context_menu.cpp` | Explorer's file menu and the shell "New" submenu |
+| `settings/` | `settings_panel.cpp` | Appearance panel (colours, alignment, font size, display mode, ...) |
+| `shell/` | `desktop_host.cpp`, `explorer_sort.cpp` | Desktop window host and DPI; Explorer's sort order of a folder |
+| `core/` | `config.cpp`, `localization.cpp` | `config.json` persistence, autostart; key-based localization (`L10n::Tr`) |
+
+Includes are written with the folder: `#include "fence/fence_window.h"`.
 
 ## Build and run
 

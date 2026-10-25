@@ -1,5 +1,5 @@
-#include "fence_window.h"
-#include "config.h"
+#include "fence/fence_window.h"
+#include "core/config.h"
 #include <shlwapi.h>
 
 void FenceWindow::EnterRename() {

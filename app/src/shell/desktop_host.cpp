@@ -1,4 +1,4 @@
-#include "desktop_host.h"
+#include "shell/desktop_host.h"
 
 #ifndef DPI_AWARENESS_CONTEXT_UNAWARE
 DECLARE_HANDLE(DPI_AWARENESS_CONTEXT);

@@ -1,6 +1,6 @@
 // The icon grid is the part of the fence layout that needs no window: where a
 // dropped icon lands, and where a displaced icon goes when its cell is taken.
-#include "icon_grid.h"
+#include "fence/icon_grid.h"
 #include "test_util.h"
 
 #include <vector>

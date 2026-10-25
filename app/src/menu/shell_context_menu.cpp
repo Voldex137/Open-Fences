@@ -1,7 +1,7 @@
-#include "shell_context_menu.h"
-#include "context_menu.h"
-#include "localization.h"
-#include "com_ptr.h"
+#include "menu/shell_context_menu.h"
+#include "menu/context_menu.h"
+#include "core/localization.h"
+#include "core/com_ptr.h"
 
 #include <shlobj.h>
 #include <shobjidl.h>

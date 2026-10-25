@@ -1,6 +1,6 @@
-#include "config.h"
-#include "fence_window.h"
-#include "localization.h"
+#include "core/config.h"
+#include "fence/fence_window.h"
+#include "core/localization.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)

@@ -1,7 +1,7 @@
-#include "fence_window.h"
-#include "config.h"
-#include "explorer_sort.h"
-#include "icon_sort.h"
+#include "fence/fence_window.h"
+#include "core/config.h"
+#include "shell/explorer_sort.h"
+#include "fence/icon_sort.h"
 #include <shlwapi.h>
 #include <algorithm>
 

@@ -1,4 +1,4 @@
-#include "localization.h"
+#include "core/localization.h"
 
 #include <windows.h>
 #include <shlobj.h>

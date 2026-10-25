@@ -1,4 +1,4 @@
-#include "fence_window.h"
+#include "fence/fence_window.h"
 
 LRESULT FenceWindow::OnChar(UINT msg, WPARAM wp, LPARAM lp) {
     if (m_renaming && wp >= 32) {

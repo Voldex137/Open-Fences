@@ -6,8 +6,8 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
-#include "render.h"
-#include "icon_grid.h"
+#include "render/render.h"
+#include "fence/icon_grid.h"
 
 struct IContextMenu;
 

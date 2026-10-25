@@ -1,2 +1,2 @@
-#include "resource.h"
+#include "core/resource.h"
 IDI_APP ICON "../resources/app.ico"

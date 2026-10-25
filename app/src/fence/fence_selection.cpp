@@ -1,4 +1,4 @@
-#include "fence_window.h"
+#include "fence/fence_window.h"
 #include <algorithm>
 
 // Path-keyed membership: the bring-to-front reorder a drag performs must
