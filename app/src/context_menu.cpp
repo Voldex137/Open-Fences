@@ -1,3 +1,4 @@
+#include "desktop_host.h"
 #include "context_menu.h"
 #include "render.h"
 #include "icon_extract.h"
@@ -29,12 +30,6 @@
 namespace {
 
 // ── Small utilities ──
-static float DpiScale() {
-    HDC h = GetDC(nullptr);
-    int d = GetDeviceCaps(h, LOGPIXELSX);
-    ReleaseDC(nullptr, h);
-    return d / 96.0f;
-}
 static int clampi(int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
 // Design metrics at 96 DPI; every value is multiplied by the DPI scale at use.
@@ -1098,7 +1093,7 @@ int FluentMenu::Run(HWND owner, IContextMenu* cm, HMENU menu,
     sess.owner = owner;
     sess.cm = cm;
     sess.filePath = filePath;
-    sess.s = DpiScale();
+    sess.s = Desktop::DpiScale();
 
     // Text formats shared by every popup level.
     if (FAILED(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED,

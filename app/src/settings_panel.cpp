@@ -1,4 +1,5 @@
 #include "settings_panel.h"
+#include "desktop_host.h"
 #include "localization.h"
 #include "fence_window.h"
 #include "config.h"
@@ -37,12 +38,6 @@ static const float kTitleColors[8][3] = {
 static int   clampi(int v, int lo, int hi)   { return v < lo ? lo : (v > hi ? hi : v); }
 static float clampf(float v, float lo, float hi) { return v < lo ? lo : (v > hi ? hi : v); }
 
-static float DpiScale() {
-    HDC h = GetDC(nullptr);
-    int d = GetDeviceCaps(h, LOGPIXELSX);
-    ReleaseDC(nullptr, h);
-    return d / 96.0f;
-}
 
 SettingsPanel* SettingsPanel::s_active = nullptr;
 
@@ -87,7 +82,7 @@ void SettingsPanel::CloseActiveFor(const FenceWindow* fence) {
 
 SettingsPanel::SettingsPanel(FenceWindow* fence) : m_fence(fence) {
     m_fenceHwnd = fence->Hwnd();
-    m_s = DpiScale();
+    m_s = Desktop::DpiScale();
     s_active = this;
 
     static bool clsReg = false;

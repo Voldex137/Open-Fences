@@ -40,6 +40,9 @@ set_source_files_properties("${OPENFENCES_LANG_RC}" PROPERTIES GENERATED TRUE)
 add_executable(openfences
     app/src/main.cpp
     app/src/fence_window.cpp
+    app/src/desktop_host.cpp
+    app/src/fence_drop_target.cpp
+    app/src/shell_context_menu.cpp
     app/src/render.cpp
     app/src/settings_panel.cpp
     app/src/context_menu.cpp
