@@ -1,4 +1,5 @@
 #include "settings_panel.h"
+#include "localization.h"
 #include "fence_window.h"
 #include "config.h"
 #include <windowsx.h>
@@ -44,10 +45,6 @@ static float DpiScale() {
 }
 
 SettingsPanel* SettingsPanel::s_active = nullptr;
-
-const wchar_t* SettingsPanel::Loc(const wchar_t* en, const wchar_t* zh) {
-    return FenceWindow::GetLanguage() == 1 ? zh : en;
-}
 
 // ── Font enumeration ──
 
@@ -393,7 +390,7 @@ void SettingsPanel::DrawPanel() {
     t->DrawRoundedRectangle(rr, m_brBorder.Get(), 1.0f);
 
     // Header
-    drawStr(Loc(L"Appearance", L"外观设置"),
+    drawStr(L10n::Tr("settings.title"),
         RECT{ (LONG)(20 * s), 0, (LONG)(W - 40 * s), (LONG)(44 * s) },
         m_fmtHeader.Get(), m_brText.Get());
     if (m_hover == HIT_CLOSE)
@@ -410,7 +407,7 @@ void SettingsPanel::DrawPanel() {
     };
 
     // ── Font list ──
-    drawLabel(Loc(L"Font", L"字体"), m_fontLblY);
+    drawLabel(L10n::Tr("settings.font"), m_fontLblY);
     fillRR(m_fontList, 6 * s, m_brField.Get());
     int total = (int)m_fonts.size();
     for (int row = 0; row < m_fontRows; row++) {
@@ -463,11 +460,11 @@ void SettingsPanel::DrawPanel() {
         t->FillEllipse(D2D1_ELLIPSE{{fx, cy}, 9 * s, 9 * s}, m_brThumb.Get());
     };
 
-    drawLabel(Loc(L"Font Size", L"字体大小"), m_sizeLblY);
+    drawLabel(L10n::Tr("settings.font_size"), m_sizeLblY);
     drawValueR(std::to_wstring(sizeVal), m_sizeLblY);
     drawSlider(m_sizeSlider, (sizeVal - 8) / (float)(24 - 8));
 
-    drawLabel(Loc(L"Opacity", L"不透明度"), m_opLblY);
+    drawLabel(L10n::Tr("settings.opacity"), m_opLblY);
     drawValueR(std::to_wstring(opVal) + L"%", m_opLblY);
     drawSlider(m_opSlider, (opVal - 30) / (float)(100 - 30));
 
@@ -489,7 +486,7 @@ void SettingsPanel::DrawPanel() {
             t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(rc), 6 * s, 6 * s}, m_brSwatchRing.Get(), 2.0f * s);
     };
 
-    drawLabel(Loc(L"Panel Color", L"面板颜色"), m_panelLblY);
+    drawLabel(L10n::Tr("settings.panel_color"), m_panelLblY);
     for (int i = 0; i < 8; i++)
         drawSwatch(m_panelSwatch[i], m_brPanelSw[i].Get(), i == panelSel, HIT_PANEL_SWATCH0 + i);
     fillRR(m_panelMore, 6 * s, m_brField.Get());
@@ -497,7 +494,7 @@ void SettingsPanel::DrawPanel() {
         t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_panelMore), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
     drawStr(L"\u2026", m_panelMore, m_fmtSymbol.Get(), m_brText2.Get());
 
-    drawLabel(Loc(L"Title Bar Color", L"标题栏颜色"), m_titleLblY);
+    drawLabel(L10n::Tr("settings.title_color"), m_titleLblY);
     for (int i = 0; i < 8; i++)
         drawSwatch(m_titleSwatch[i], m_brTitleSw[i].Get(), i == titleSel, HIT_TITLE_SWATCH0 + i);
     fillRR(m_titleMore, 6 * s, m_brField.Get());
@@ -506,10 +503,10 @@ void SettingsPanel::DrawPanel() {
     drawStr(L"\u2026", m_titleMore, m_fmtSymbol.Get(), m_brText2.Get());
 
     // ── Title name position (left / center / right) ──
-    drawLabel(Loc(L"Title Position", L"标题位置"), m_titlePosLblY);
+    drawLabel(L10n::Tr("settings.title_position"), m_titlePosLblY);
     {
         const wchar_t* segLabels[3] = {
-            Loc(L"Left", L"左"), Loc(L"Center", L"中"), Loc(L"Right", L"右"),
+            L10n::Tr("settings.align.left"), L10n::Tr("settings.align.center"), L10n::Tr("settings.align.right"),
         };
         for (int i = 0; i < 3; i++) {
             bool active = (app.titleAlign == i);
@@ -523,13 +520,13 @@ void SettingsPanel::DrawPanel() {
     }
 
     // ── Title bar height stepper ──
-    drawLabel(Loc(L"Title Bar Height", L"标题栏高度"), m_thLblY);
+    drawLabel(L10n::Tr("settings.title_height"), m_thLblY);
 
     // ── Display mode (grid / list) ──
-    drawLabel(Loc(L"Display Mode", L"显示方式"), m_displayModeLblY);
+    drawLabel(L10n::Tr("settings.display_mode"), m_displayModeLblY);
     {
         const wchar_t* dmLabels[2] = {
-            Loc(L"Grid", L"网格"), Loc(L"List", L"列表"),
+            L10n::Tr("settings.mode.grid"), L10n::Tr("settings.mode.list"),
         };
         int dm = m_fence->GetRender().Appearance().displayMode;
         for (int i = 0; i < 2; i++) {
@@ -562,7 +559,7 @@ void SettingsPanel::DrawPanel() {
     fillRR(m_deleteBtn, 8 * s, m_brDanger.Get());
     if (m_hover == HIT_DELETE_FENCE)
         fillRR(m_deleteBtn, 8 * s, m_brHover.Get());
-    drawStr(Loc(L"Delete Fence", L"删除围栏"), m_deleteBtn, m_fmtCenter.Get(), m_brThumb.Get());
+    drawStr(L10n::Tr("settings.delete_fence"), m_deleteBtn, m_fmtCenter.Get(), m_brThumb.Get());
 
     m_render->EndDraw();
 }

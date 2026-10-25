@@ -19,7 +19,7 @@
 - **Win11 风格右键菜单** — 自绘 Fluent Design 菜单，带圆角、毛玻璃背景、软阴影
 - **系统托盘常驻** — 托盘图标右键菜单：新建围栏、隐藏/显示全部、切换语言、开机自启、桌面快捷方式
 - **配置持久化** — 围栏布局、图标位置、外观设置自动保存至 `%APPDATA%\openFences\config.json`
-- **多语言** — 目前支持中文 / English，俄语开发中
+- **多语言** — 支持 English / 中文 / Русский；默认跟随 Windows 语言，新增语言只需添加一个 JSON 文件（见 [docs/LOCALIZATION.md](docs/LOCALIZATION.md)，英文）
 - **极轻量** — 单 exe（~780KB），无依赖，无需安装 VC++ 运行库，拷贝即用
 
 ---
@@ -69,6 +69,8 @@ openFences/
 │   ├── explorer_sort.cpp      # 桌面排序处理
 │   └── resource.h             # 资源 ID 定义
 ├── resources/app.ico          # 应用程序图标（可替换）
+├── resources/lang/            # 每种界面语言一个 JSON 文件
+├── tests/                     # 单元测试（本地化）
 ├── tools/                     # 研究性试验与诊断程序（默认不构建）
 ├── experiments/legacy-hook/   # 早期设计遗留、未使用的 DLL
 ├── docs/                      # 设计笔记（CPP_DESIGN.md、DEV_PLAN.md）
@@ -85,7 +87,7 @@ openFences/
 ```json
 {
   "version": 1,
-  "language": 1,
+  "language": "zh-CN",
   "hideAll": false,
   "fences": [
     {
@@ -104,7 +106,7 @@ openFences/
 }
 ```
 
-`language`：`0` = English，`1` = 中文（沿用上游编号，俄语将在此基础上扩展）。
+`language`：语言代码（`en`、`ru`、`zh-CN`）。缺省时跟随 Windows 语言。旧配置中的数字（`0` = English，`1` = 中文）会在加载时自动转换。
 
 ---
 
@@ -121,7 +123,7 @@ openFences/
 ## 路线图
 
 - [x] 三语文档（英文、俄文、中文）
-- [ ] 俄语界面（用按语言编号索引的字符串表替换内联的 `Loc(en, zh)` 二元组）
+- [x] 俄语界面与基于键的本地化系统（每种语言一个 JSON 文件，自动检测系统语言）
 - [ ] 从版本库中移除已提交的构建产物
 - [ ] Linux 移植（上游 issue #8 已提出）。当前代码基于 Win32 / Direct2D，需要新的界面后端；各桌面环境（KDE Plasma、GNOME 等）的桌面图标模型也不相同
 

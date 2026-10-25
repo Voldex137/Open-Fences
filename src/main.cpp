@@ -11,7 +11,7 @@
 #include "context_menu.h"
 #include "menu_icons.h"
 #include "config.h"
-#include "language.h"
+#include "localization.h"
 #include "resource.h"
 #include <vector>
 #include <memory>
@@ -21,6 +21,9 @@ struct FenceRect { int x, y, w, h; };
 // Not file-static: config.cpp serializes / rebuilds them (see Config::SaveNow
 // / Config::LoadApp).
 std::vector<std::unique_ptr<FenceWindow>> g_fences;
+
+// Tray menu command ids for the language items (one per loaded language).
+constexpr UINT kLanguageCmdBase = 200;
 static HWND g_owner = nullptr;
 static UINT g_taskbarCreated = 0;   // broadcast when explorer (re)starts
 
@@ -215,32 +218,33 @@ static void CreateDesktopShortcut() {
 void ShowTrayMenu(HWND hwnd) {
     POINT pt; GetCursorPos(&pt);
     HMENU menu = CreatePopupMenu();
-    AppendMenuW(menu, MF_STRING, 100, FenceWindow::Loc(L"New Fence", L"新建围栏"));
+    AppendMenuW(menu, MF_STRING, 100, L10n::Tr("tray.new_fence"));
     AppendMenuW(menu, MF_STRING, 101, g_allHidden
-        ? FenceWindow::Loc(L"Show All Fences", L"显示全部围栏")
-        : FenceWindow::Loc(L"Hide All Fences", L"隐藏全部围栏"));
+        ? L10n::Tr("tray.show_all_fences")
+        : L10n::Tr("tray.hide_all_fences"));
     AppendMenuW(menu, MF_STRING, 103, g_deskHidden
-        ? FenceWindow::Loc(L"Show Desktop Icons", L"显示桌面图标")
-        : FenceWindow::Loc(L"Hide Desktop Icons", L"隐藏桌面图标"));
+        ? L10n::Tr("tray.show_desktop_icons")
+        : L10n::Tr("tray.hide_desktop_icons"));
 
     // Language is a global setting, so it lives here (tray) rather than in the
     // per-fence appearance panel.
     HMENU langMenu = CreatePopupMenu();
-    AppendMenuW(langMenu, MF_STRING | (FenceWindow::GetLanguage() == 0 ? MF_CHECKED : 0),
-        110, L"English");
-    AppendMenuW(langMenu, MF_STRING | (FenceWindow::GetLanguage() == 1 ? MF_CHECKED : 0),
-        111, L"中文");
+    const auto& languages = L10n::Languages();
+    for (size_t i = 0; i < languages.size(); ++i)
+        AppendMenuW(langMenu,
+            MF_STRING | (languages[i].code == L10n::CurrentCode() ? MF_CHECKED : 0),
+            kLanguageCmdBase + (UINT)i, languages[i].name.c_str());
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_POPUP, (UINT_PTR)langMenu, FenceWindow::Loc(L"Language", L"语言"));
+    AppendMenuW(menu, MF_POPUP, (UINT_PTR)langMenu, L10n::Tr("tray.language"));
     AppendMenuW(menu, MF_STRING | (Config::AutoStartEnabled() ? MF_CHECKED : 0),
-        112, FenceWindow::Loc(L"Start with Windows", L"开机自启动"));
+        112, L10n::Tr("tray.start_with_windows"));
     AppendMenuW(menu, MF_STRING, 113,
-        FenceWindow::Loc(L"Config File Location", L"配置文件位置"));
+        L10n::Tr("tray.config_location"));
     AppendMenuW(menu, MF_STRING, 114,
-        FenceWindow::Loc(L"Create Desktop Shortcut", L"创建桌面快捷方式"));
+        L10n::Tr("tray.create_shortcut"));
 
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, 102, FenceWindow::Loc(L"Exit", L"退出"));
+    AppendMenuW(menu, MF_STRING, 102, L10n::Tr("tray.exit"));
 
     // Fluent glyph icons, by menu position (0 New Fence, 1 Hide/Show All
     // Fences, 2 Hide/Show Desktop Icons, 3 separator, 4 Language ▸,
@@ -281,7 +285,7 @@ void ShowTrayMenu(HWND hwnd) {
         float s = GetDeviceCaps(hdc, LOGPIXELSX) / 96.0f;
         ReleaseDC(nullptr, hdc);
         FenceData fd{ L"f" + std::to_wstring(g_fences.size()+1),
-                      FenceWindow::Loc(L"New Fence", L"新建围栏"),
+                      L10n::Tr("fence.new_title"),
                       (int)(100*s), (int)(100*s), (int)(300*s), (int)(220*s) };
         g_fences.push_back(std::make_unique<FenceWindow>(fd));
         if (g_deskHidden || g_extParked) {
@@ -298,11 +302,9 @@ void ShowTrayMenu(HWND hwnd) {
         Config::MarkDirty();
     } else if (cmd == 103) {
         ToggleDesktopIcons();
-    } else if (cmd == 110) {
-        FenceWindow::SetLanguage(0);   // English
-        Config::MarkDirty();
-    } else if (cmd == 111) {
-        FenceWindow::SetLanguage(1);   // 中文
+    } else if (cmd >= (int)kLanguageCmdBase &&
+               cmd < (int)(kLanguageCmdBase + L10n::Languages().size())) {
+        L10n::SetLanguage(L10n::Languages()[cmd - kLanguageCmdBase].code);
         Config::MarkDirty();
     } else if (cmd == 112) {
         Config::SetAutoStart(!Config::AutoStartEnabled());
@@ -441,7 +443,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
 
     // Without a saved language the UI follows the system language (English as fallback).
-    FenceWindow::SetLanguage(Language::DetectSystem());
+    L10n::Init();
+    L10n::SetLanguage(L10n::DetectSystemLanguage());
 
     // Restore the persisted layout (language, fences, icons, appearance). A
     // first run, an unreadable config and an empty saved list all start with no

@@ -1,6 +1,6 @@
 #include "config.h"
 #include "fence_window.h"
-#include "language.h"
+#include "localization.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)
@@ -158,7 +158,7 @@ const std::wstring& Path() {
 bool SaveNow() {
     json j;
     j["version"]  = 1;
-    j["language"] = FenceWindow::GetLanguage();
+    j["language"] = ToUtf8(L10n::CurrentCode());
     j["hideAll"]  = g_allHidden;
     json fences = json::array();
     for (const auto& f : g_fences)
@@ -215,10 +215,15 @@ bool LoadApp() {
     json j = json::parse(bytes.begin(), bytes.end(), nullptr, false);
     if (j.is_discarded() || !j.is_object()) return false;
 
-    // A missing or unknown value follows the system language instead of a fixed one.
-    int lang = j.value("language", Language::DetectSystem());
-    FenceWindow::SetLanguage(lang == LANG_ID_ZH ? LANG_ID_ZH :
-                             lang == LANG_ID_EN ? LANG_ID_EN : Language::DetectSystem());
+    // A missing or unknown value leaves the language chosen at startup (system language).
+    // Older configs stored a number: 0 = English, 1 = Chinese.
+    if (j.contains("language")) {
+        const json& jl = j["language"];
+        if (jl.is_string())
+            L10n::SetLanguage(FromUtf8(jl.get<std::string>()));
+        else if (jl.is_number_integer())
+            L10n::SetLanguage(jl.get<int>() == 1 ? L"zh-CN" : L"en");
+    }
 
     if (j.contains("fences") && j["fences"].is_array())
         for (const auto& jf : j["fences"])

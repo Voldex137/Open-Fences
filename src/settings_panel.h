@@ -65,7 +65,6 @@ private:
     void RunLoop();
 
     static LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
-    static const wchar_t* Loc(const wchar_t* en, const wchar_t* zh);
 
     static SettingsPanel* s_active;
 

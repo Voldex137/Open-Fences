@@ -111,9 +111,6 @@ public:
     static HWND DesktopHost();
     static void SetOwner(HWND owner) { s_owner = owner; }
     static HWND Owner() { return s_owner; }
-    static void SetLanguage(int lang) { s_lang = lang; }
-    static int  GetLanguage() { return s_lang; }
-    static const wchar_t* Loc(const wchar_t* en, const wchar_t* zh);
     static const wchar_t* ClassName() { return L"OpenFencesFence"; }
 
 private:
@@ -140,7 +137,6 @@ private:
                                      // dragged group currently covers
     void SettleDragGroup();          // snap every member + end the drag
     static HWND s_owner;
-    static int s_lang;
 
     HWND m_hwnd = nullptr;
     std::unique_ptr<RenderContext> m_render;

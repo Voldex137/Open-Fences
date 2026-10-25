@@ -21,6 +21,7 @@ An open-source alternative to Stardock Fences: a Windows desktop icon grouping t
 | `context_menu.cpp` | Windows 11 style Fluent custom-drawn menu + low-level hook for dismissal |
 | `settings_panel.cpp` | Appearance settings panel (background colour, title colour, alignment, font size, ...) |
 | `config.cpp` | Configuration persistence (read/write JSON, autosave, autostart registry key) |
+| `localization.cpp` | Key-based localization: loads `resources/lang/*.json` (embedded + external), system language detection, `L10n::Tr(key)` |
 | `icon_extract.cpp` | Extracts icon pixel data from files and shortcuts |
 | `menu_icons.cpp` | Programmatic rasterisation of menu item icons (vector glyphs) |
 
@@ -40,4 +41,4 @@ build/Release/openfences.exe
 - No heap allocations per frame or on hot paths (reuse brushes via `SetColor`)
 - All GDI/D2D/WIC resources are released RAII-style when the window is destroyed
 - Consistent UI: colours, spacing and fonts are defined as global constants, never hard-coded
-- User-visible strings go through the localization layer, not inline literals (Russian support in progress)
+- User-visible strings go through `L10n::Tr("key")`, never inline literals; add every new key to **all** files in `resources/lang` (see `docs/LOCALIZATION.md`)

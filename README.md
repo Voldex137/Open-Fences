@@ -19,7 +19,7 @@ This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigo
 - **Windows 11 style context menu** — custom-drawn Fluent Design menu with rounded corners, blur background and soft shadow
 - **System tray** — new fence, hide/show everything, language, start with Windows, desktop shortcut
 - **Persistent configuration** — fence layout, icon positions and appearance are saved to `%APPDATA%\openFences\config.json`
-- **Multi-language UI** — Chinese and English today, Russian in progress
+- **Multi-language UI** — English, Russian and Chinese; the language follows Windows by default, and a new one is just a JSON file (see [docs/LOCALIZATION.md](docs/LOCALIZATION.md))
 - **Tiny** — a single exe (~780 KB), no dependencies, no VC++ runtime needed, portable
 
 ---
@@ -69,6 +69,8 @@ openFences/
 │   ├── explorer_sort.cpp      # desktop sort-order handling
 │   └── resource.h             # resource IDs
 ├── resources/app.ico          # application icon (replaceable)
+├── resources/lang/            # one JSON file per UI language
+├── tests/                     # unit tests (localization)
 ├── tools/                     # research spikes and diagnostics (off by default)
 ├── experiments/legacy-hook/   # unused DLL from an early design
 ├── docs/                      # design notes (CPP_DESIGN.md, DEV_PLAN.md)
@@ -85,7 +87,7 @@ Config file: `%APPDATA%\openFences\config.json`
 ```json
 {
   "version": 1,
-  "language": 1,
+  "language": "en",
   "hideAll": false,
   "fences": [
     {
@@ -104,7 +106,7 @@ Config file: `%APPDATA%\openFences\config.json`
 }
 ```
 
-`language`: `0` = English, `1` = Chinese (the upstream numbering; Russian will extend it).
+`language`: a language code (`en`, `ru`, `zh-CN`). Missing means "follow the Windows language". Old numeric values (`0` = English, `1` = Chinese) are converted on load.
 
 ---
 
@@ -121,7 +123,7 @@ Config file: `%APPDATA%\openFences\config.json`
 ## Roadmap
 
 - [x] Trilingual documentation (English, Russian, Chinese)
-- [ ] Russian UI (replace the inline English/Chinese pair `Loc(en, zh)` with a string table keyed by language)
+- [x] Russian UI and a key-based localization system (one JSON file per language, system language detection)
 - [ ] Remove committed build artifacts from version control
 - [ ] Linux port (tracked upstream in issue #8). The current code is Win32 / Direct2D, so this means a new UI backend; the desktop-icon model differs per desktop environment (KDE Plasma, GNOME, ...)
 

@@ -22,6 +22,21 @@ FetchContent_Declare(json
 )
 FetchContent_MakeAvailable(json)
 
+# Embed every resources/lang/*.json into the exe as an RCDATA resource named
+# LANG_<NAME>; the loader (src/localization.cpp) enumerates them at startup.
+file(GLOB OPENFENCES_LANG_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/resources/lang/*.json")
+set(OPENFENCES_LANG_RC "${CMAKE_CURRENT_BINARY_DIR}/lang_resources.rc")
+set(OPENFENCES_LANG_RC_CONTENT "")
+foreach(lang_file ${OPENFENCES_LANG_FILES})
+    get_filename_component(lang_name "${lang_file}" NAME_WE)
+    string(TOUPPER "${lang_name}" lang_id)
+    string(REPLACE "-" "_" lang_id "${lang_id}")
+    string(APPEND OPENFENCES_LANG_RC_CONTENT "LANG_${lang_id} RCDATA \"${lang_file}\"
+")
+endforeach()
+file(GENERATE OUTPUT "${OPENFENCES_LANG_RC}" CONTENT "${OPENFENCES_LANG_RC_CONTENT}")
+set_source_files_properties("${OPENFENCES_LANG_RC}" PROPERTIES GENERATED TRUE)
+
 add_executable(openfences
     src/main.cpp
     src/fence_window.cpp
@@ -31,9 +46,10 @@ add_executable(openfences
     src/icon_extract.cpp
     src/menu_icons.cpp
     src/config.cpp
-    src/language.cpp
+    src/localization.cpp
     src/explorer_sort.cpp
     src/app.rc
+    ${OPENFENCES_LANG_RC}
 )
 
 # Merge our application manifest into the linker-generated one. The
@@ -78,4 +94,18 @@ if(OPENFENCES_BUILD_TOOLS)
 
     add_executable(vis_probe tools/vis_probe.cpp)
     target_link_libraries(vis_probe PRIVATE user32 shell32 advapi32)
+endif()
+
+# Unit tests (ctest). Off by default.
+option(OPENFENCES_BUILD_TESTS "Build the tests in tests/" OFF)
+if(OPENFENCES_BUILD_TESTS)
+    enable_testing()
+    add_executable(l10n_test tests/l10n_test.cpp src/localization.cpp)
+    target_include_directories(l10n_test PRIVATE src)
+    target_link_libraries(l10n_test PRIVATE shell32 nlohmann_json::nlohmann_json)
+    # The loader also reads "<exe dir>\lang\*.json", so the test needs no embedded resources.
+    add_custom_command(TARGET l10n_test POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${CMAKE_CURRENT_SOURCE_DIR}/resources/lang" "$<TARGET_FILE_DIR:l10n_test>/lang")
+    add_test(NAME l10n COMMAND l10n_test)
 endif()

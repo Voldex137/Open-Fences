@@ -1,4 +1,5 @@
 #include "fence_window.h"
+#include "localization.h"
 #include "settings_panel.h"
 #include "context_menu.h"
 #include "menu_icons.h"
@@ -13,11 +14,6 @@
 #include <cmath>
 
 HWND FenceWindow::s_owner = nullptr;
-int  FenceWindow::s_lang = 0; // LanguageId; real default comes from Language::DetectSystem()
-
-const wchar_t* FenceWindow::Loc(const wchar_t* en, const wchar_t* zh) {
-    return s_lang == 1 ? zh : en;
-}
 
 // Inset between the fence border and the icon grid (also the free-drag clamp)
 static const float kGridPad = 4.0f;
@@ -1379,7 +1375,7 @@ static bool RunShellContextMenu(HWND hwnd, const std::wstring& path,
     }
 
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    std::wstring rm = std::wstring(FenceWindow::Loc(L"Remove from fence", L"从围栏移除")) +
+    std::wstring rm = std::wstring(L10n::Tr("fence.remove_from_fence")) +
                       L"  \"" + displayName + L"\"";
     AppendMenuW(menu, MF_STRING, kCmdRemoveFromFence, rm.c_str());
 
@@ -2005,14 +2001,14 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
         // Fence-level menu (background, or fallback when the shell menu fails)
         HMENU menu = CreatePopupMenu();
         if (iconHit >= 0 && self) {
-            std::wstring rm = std::wstring(Loc(L"Remove", L"移除")) + L" \"" +
+            std::wstring rm = std::wstring(L10n::Tr("fence.remove")) + L" \"" +
                               self->m_icons[iconHit].name + L"\"";
             AppendMenuW(menu, MF_STRING, 3, rm.c_str());
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
         }
 
-        AppendMenuW(menu, MF_STRING, 1, Loc(L"Rename", L"重命名"));
-        AppendMenuW(menu, MF_STRING, 4, Loc(L"Appearance Settings...", L"外观设置..."));
+        AppendMenuW(menu, MF_STRING, 1, L10n::Tr("fence.rename"));
+        AppendMenuW(menu, MF_STRING, 4, L10n::Tr("fence.appearance"));
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
 
         // Explorer's own 新建 submenu, queried straight into the fence menu.
@@ -2059,34 +2055,34 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             }
         }
 
-        AppendMenuW(menu, MF_STRING, 2, Loc(L"Delete Fence", L"删除围栏"));
+        AppendMenuW(menu, MF_STRING, 2, L10n::Tr("fence.delete"));
 
         // Sort-by submenu (mapped fences only)
         if (self && !self->m_sourceFolder.empty()) {
             AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
             HMENU sortMenu = CreatePopupMenu();
-            auto addSortItem = [&](UINT id, int col, const wchar_t* en, const wchar_t* zh) {
+            auto addSortItem = [&](UINT id, int col, const char* key) {
                 UINT flags = MF_STRING;
                 if (self->m_sortColumn == col) flags |= MF_CHECKED;
-                AppendMenuW(sortMenu, flags, id, Loc(en, zh));
+                AppendMenuW(sortMenu, flags, id, L10n::Tr(key));
             };
-            addSortItem(10, 0, L"Name", L"名称");
-            addSortItem(11, 1, L"Date modified", L"修改日期");
-            addSortItem(12, 3, L"Type", L"类型");
-            addSortItem(13, 2, L"Size", L"大小");
+            addSortItem(10, 0, "fence.sort.name");
+            addSortItem(11, 1, "fence.sort.date_modified");
+            addSortItem(12, 3, "fence.sort.type");
+            addSortItem(13, 2, "fence.sort.size");
             AppendMenuW(sortMenu, MF_SEPARATOR, 0, nullptr);
             AppendMenuW(sortMenu, MF_STRING | (self->m_sortAscending ? MF_CHECKED : 0),
-                        14, Loc(L"Ascending", L"升序"));
+                        14, L10n::Tr("fence.sort.ascending"));
             AppendMenuW(sortMenu, MF_STRING | (!self->m_sortAscending ? MF_CHECKED : 0),
-                        15, Loc(L"Descending", L"降序"));
+                        15, L10n::Tr("fence.sort.descending"));
             AppendMenuW(menu, MF_POPUP, (UINT_PTR)sortMenu,
-                        Loc(L"Sort by", L"排序方式"));
+                        L10n::Tr("fence.sort_by"));
         }
 
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-        AppendMenuW(menu, MF_STRING, 5, Loc(L"Map Folder...", L"映射文件夹..."));
+        AppendMenuW(menu, MF_STRING, 5, L10n::Tr("fence.map_folder"));
         if (self && !self->m_sourceFolder.empty())
-            AppendMenuW(menu, MF_STRING, 6, Loc(L"Unmap Folder", L"取消映射"));
+            AppendMenuW(menu, MF_STRING, 6, L10n::Tr("fence.unmap_folder"));
 
         // Fluent glyph icons. The set owns the HBITMAPs until the menu
         // interaction below has fully returned (MIIM_BITMAP is by reference).
@@ -2151,9 +2147,8 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                             LPWSTR path = nullptr;
                             if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
                                 int res = MessageBoxW(hwnd,
-                                    Loc(L"Mapping a folder will clear the current fence contents. Continue?",
-                                        L"映射文件夹将清空当前围栏内的内容，是否继续？"),
-                                    Loc(L"Map Folder", L"映射文件夹"),
+                                    L10n::Tr("dialog.map_folder.confirm"),
+                                    L10n::Tr("dialog.map_folder.title"),
                                     MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2);
                                 if (res == IDYES) {
                                     self->GetRender().Appearance().displayMode = 1;
