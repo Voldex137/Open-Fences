@@ -62,6 +62,11 @@ add_executable(openfences
     app/src/render/render_surface.cpp
     app/src/settings/settings_panel.cpp
     app/src/menu/context_menu.cpp
+    app/src/menu/menu_model.cpp
+    app/src/menu/menu_hook.cpp
+    app/src/menu/menu_popup.cpp
+    app/src/menu/menu_popup_draw.cpp
+    app/src/menu/menu_popup_input.cpp
     app/src/render/icon_extract.cpp
     app/src/render/menu_icons.cpp
     app/src/core/config.cpp
