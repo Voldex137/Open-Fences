@@ -311,7 +311,8 @@ void ShowTrayMenu(HWND hwnd) {
         CreateDesktopShortcut();
     } else if (cmd == 102) {
         Config::SaveNow();   // do not ride on the debounce for a real exit
-        Shell_NotifyIconW(NIM_DELETE, &NOTIFYICONDATAW{sizeof(NOTIFYICONDATAW), hwnd, 1});
+        NOTIFYICONDATAW nid{sizeof(NOTIFYICONDATAW), hwnd, 1};
+        Shell_NotifyIconW(NIM_DELETE, &nid);
         PostQuitMessage(0);
     }
 }
@@ -406,7 +407,8 @@ LRESULT CALLBACK OwnerWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     }
     case WM_DESTROY:
         Config::SaveNow();   // safety net; the tray Exit path saves too
-        Shell_NotifyIconW(NIM_DELETE, &NOTIFYICONDATAW{sizeof(NOTIFYICONDATAW), hwnd, 1});
+        NOTIFYICONDATAW nid{sizeof(NOTIFYICONDATAW), hwnd, 1};
+        Shell_NotifyIconW(NIM_DELETE, &nid);
         PostQuitMessage(0); return 0;
     }
     return DefWindowProcW(hwnd, msg, wp, lp);

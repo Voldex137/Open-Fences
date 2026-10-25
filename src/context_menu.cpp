@@ -6,7 +6,7 @@
 #include <shellapi.h>
 #include <d2d1.h>
 #include <dwrite.h>
-#include <atlbase.h>
+#include "com_ptr.h"
 #include <vector>
 #include <memory>
 #include <algorithm>
@@ -151,9 +151,9 @@ struct MenuSession {
     bool closed = false;
     int result = 0;
 
-    CComPtr<IDWriteFactory> dw;
-    CComPtr<IDWriteTextFormat> fmt;
-    CComPtr<IDWriteTextFormat> fmtSemi;   // semibold, for the default verb
+    ComPtr<IDWriteFactory> dw;
+    ComPtr<IDWriteTextFormat> fmt;
+    ComPtr<IDWriteTextFormat> fmtSemi;   // semibold, for the default verb
 
     bool Build(HMENU menu);
     void CloseAll() { closed = true; }
@@ -187,12 +187,12 @@ struct MenuPopup {
     bool tracking = false;               // TME_LEAVE tracking active
 
     std::unique_ptr<RenderContext> render;
-    std::vector<CComPtr<ID2D1Bitmap>> icons;
-    std::vector<CComPtr<IDWriteTextLayout>> texts;   // one per row (null = separator)
-    CComPtr<ID2D1SolidColorBrush> brTint, brBorder, brHi, brText, brDim,
+    std::vector<ComPtr<ID2D1Bitmap>> icons;
+    std::vector<ComPtr<IDWriteTextLayout>> texts;   // one per row (null = separator)
+    ComPtr<ID2D1SolidColorBrush> brTint, brBorder, brHi, brText, brDim,
                                   brHover, brPressed, brSep, brChev, brCheck,
                                   brShadow;
-    CComPtr<ID2D1BitmapBrush> backBrush;   // fallback if no backdrop
+    ComPtr<ID2D1BitmapBrush> backBrush;   // fallback if no backdrop
 
     bool Create(MenuSession* se, const std::vector<CtxItem>* it, int dep,
                 MenuPopup* par, int parItem, POINT at);
@@ -223,8 +223,8 @@ struct MenuPopup {
 static void ForwardInitPopup(IContextMenu* cm, HMENU m) {
     // Handlers populate lazy text/icons on WM_INITMENUPOPUP (Explorer does the
     // same). Forward for this popup and all nested submenus.
-    CComPtr<IContextMenu3> cm3;
-    CComPtr<IContextMenu2> cm2;
+    ComPtr<IContextMenu3> cm3;
+    ComPtr<IContextMenu2> cm2;
     cm->QueryInterface(IID_PPV_ARGS(&cm3));
     cm->QueryInterface(IID_PPV_ARGS(&cm2));
     std::function<void(HMENU)> walk = [&](HMENU pop) {
@@ -487,9 +487,9 @@ void MenuPopup::Layout() {
     for (size_t i = 0; i < items->size(); i++) {
         const CtxItem& it = (*items)[i];
         if (it.sep || it.text.empty()) continue;
-        CComPtr<IDWriteTextLayout> tl;
+        ComPtr<IDWriteTextLayout> tl;
         if (FAILED(sess->dw->CreateTextLayout(it.text.c_str(), (UINT32)it.text.size(),
-                it.isDefault ? sess->fmtSemi.p : sess->fmt.p,
+                it.isDefault ? sess->fmtSemi.Get() : sess->fmt.Get(),
                 mt.maxTextW * s, mt.rowH * s * 2.0f, &tl)) || !tl)
             continue;
         tl->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
@@ -575,9 +575,9 @@ void MenuPopup::MakeBrushes() {
     bp.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
     bp.pixelFormat.alphaMode = D2D1_ALPHA_MODE_PREMULTIPLIED;
     bp.dpiX = bp.dpiY = 96.0f;
-    CComPtr<ID2D1Bitmap> b1;
+    ComPtr<ID2D1Bitmap> b1;
     if (SUCCEEDED(t->CreateBitmap(D2D1::SizeU(1, 1), px, 4, bp, &b1)))
-        t->CreateBitmapBrush(b1, D2D1::BitmapBrushProperties(D2D1_EXTEND_MODE_CLAMP),
+        t->CreateBitmapBrush(b1.Get(), D2D1::BitmapBrushProperties(D2D1_EXTEND_MODE_CLAMP),
                              &backBrush);
 }
 
@@ -643,7 +643,7 @@ void MenuPopup::DrawMenu() {
             float off = (float)(k + 1) * band;
             D2D1_ROUNDED_RECT ring = { {S - off, S - off, S + W + off, S + H + off},
                                        mt.radius * s + off, mt.radius * s + off };
-            t->DrawRoundedRectangle(ring, brShadow.p, band * 2.0f);
+            t->DrawRoundedRectangle(ring, brShadow.Get(), band * 2.0f);
         }
     }
 
@@ -654,14 +654,14 @@ void MenuPopup::DrawMenu() {
     // would shift the sampling by S pixels too.
     D2D1_ROUNDED_RECT surface = { {S, S, S + W, S + H}, mt.radius * s, mt.radius * s };
     if (render->HasBackdrop())     t->FillRoundedRectangle(surface, render->BackdropBrush());
-    else if (backBrush)            t->FillRoundedRectangle(surface, backBrush.p);
+    else if (backBrush)            t->FillRoundedRectangle(surface, backBrush.Get());
 
     // Everything below draws in surface coordinates.
     t->SetTransform(D2D1::Matrix3x2F::Translation(S, S));
 
-    t->FillRoundedRectangle({ {0.0f, 0.0f, W, H}, mt.radius * s, mt.radius * s }, brTint.p);
-    t->FillRectangle(D2D1_RECT_F{ 1.0f, 1.0f, W - 1.0f, 1.0f + 1.0f * s }, brHi.p);
-    t->DrawRoundedRectangle({ {0.0f, 0.0f, W, H}, mt.radius * s, mt.radius * s }, brBorder.p, 1.0f);
+    t->FillRoundedRectangle({ {0.0f, 0.0f, W, H}, mt.radius * s, mt.radius * s }, brTint.Get());
+    t->FillRectangle(D2D1_RECT_F{ 1.0f, 1.0f, W - 1.0f, 1.0f + 1.0f * s }, brHi.Get());
+    t->DrawRoundedRectangle({ {0.0f, 0.0f, W, H}, mt.radius * s, mt.radius * s }, brBorder.Get(), 1.0f);
 
     // Rows (clipped to the surface; scrolled rows slide under the padding).
     t->PushAxisAlignedClip(D2D1_RECT_F{ 1.0f, 1.0f, W - 1.0f, H - 1.0f },
@@ -679,7 +679,7 @@ void MenuPopup::DrawMenu() {
         if (it.sep) {
             float cy = top + rh * 0.5f;
             t->FillRectangle(D2D1_RECT_F{ padH + 2.0f * s, cy - 0.5f,
-                                          W - padH - 2.0f * s, cy + 0.5f }, brSep.p);
+                                          W - padH - 2.0f * s, cy + 0.5f }, brSep.Get());
             continue;
         }
 
@@ -689,21 +689,21 @@ void MenuPopup::DrawMenu() {
             t->FillRoundedRectangle(
                 D2D1_ROUNDED_RECT{ {padH, top + 1.5f * s, W - padH, top + rh - 1.5f * s},
                                    mt.rowRad * s, mt.rowRad * s },
-                pressed ? brPressed.p : brHover.p);
+                pressed ? brPressed.Get() : brHover.Get());
         }
 
         // Icon gutter: real bitmap when present, check mark for check verbs.
         float ix = padH + (mt.iconCol * s - iconSz) * 0.5f;
         float iy = top + (rh - iconSz) * 0.5f;
         if (i < icons.size() && icons[i]) {
-            t->DrawBitmap(icons[i].p, D2D1_RECT_F{ ix, iy, ix + iconSz, iy + iconSz },
+            t->DrawBitmap(icons[i].Get(), D2D1_RECT_F{ ix, iy, ix + iconSz, iy + iconSz },
                           it.disabled ? 0.4f : 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR);
         } else if (it.checked) {
             float cx = padH + mt.iconCol * s * 0.5f, cy = top + rh * 0.5f;
             t->DrawLine({ cx - 4.0f * s, cy },        { cx - 1.2f * s, cy + 2.8f * s },
-                        brCheck.p, 1.5f * s);
+                        brCheck.Get(), 1.5f * s);
             t->DrawLine({ cx - 1.2f * s, cy + 2.8f * s }, { cx + 4.2f * s, cy - 2.8f * s },
-                        brCheck.p, 1.5f * s);
+                        brCheck.Get(), 1.5f * s);
         }
 
         // Label (pre-measured layout; over-long text trims at the column edge)
@@ -711,15 +711,15 @@ void MenuPopup::DrawMenu() {
             DWRITE_TEXT_METRICS m = {};
             texts[i]->GetMetrics(&m);
             float ty = top + (rh - m.height) * 0.5f;
-            t->DrawTextLayout(D2D1_POINT_2F{ textX, ty }, texts[i].p,
-                              it.disabled ? brDim.p : brText.p);
+            t->DrawTextLayout(D2D1_POINT_2F{ textX, ty }, texts[i].Get(),
+                              it.disabled ? brDim.Get() : brText.Get());
         }
 
         // Submenu chevron
         if (it.hasSub) {
             float cy  = top + rh * 0.5f;
             float cx0 = W - padH - mt.chevr * s * 0.5f - 2.0f * s;
-            ID2D1Brush* cb = it.disabled ? brDim.p : brChev.p;
+            ID2D1Brush* cb = it.disabled ? brDim.Get() : brChev.Get();
             t->DrawLine({ cx0, cy - 3.5f * s }, { cx0 + 3.5f * s, cy }, cb, 1.3f * s);
             t->DrawLine({ cx0 + 3.5f * s, cy }, { cx0, cy + 3.5f * s }, cb, 1.3f * s);
         }

@@ -36,7 +36,7 @@ RenderContext::RenderContext(UINT w, UINT h) : m_width(w), m_height(h) {
     rt.dpiX = 96.0f; rt.dpiY = 96.0f;
     rt.usage = D2D1_RENDER_TARGET_USAGE_NONE;
     rt.minLevel = D2D1_FEATURE_LEVEL_DEFAULT;
-    m_d2dFactory->CreateWicBitmapRenderTarget(m_wicBitmap, &rt, &m_d2dTarget);
+    m_d2dFactory->CreateWicBitmapRenderTarget(m_wicBitmap.Get(), &rt, &m_d2dTarget);
 
     // Rounded stroke for the collapse chevron. Factory-level and independent
     // of the render target, so it is created exactly once per RenderContext —
@@ -181,7 +181,7 @@ bool RenderContext::CreateBrushes() {
             { 0.0f, { m_app.border[0], m_app.border[1], m_app.border[2], kBorderAlphaTop } },
             { 1.0f, { m_app.border[0], m_app.border[1], m_app.border[2], kBorderAlphaBottom } },
         };
-        CComPtr<ID2D1GradientStopCollection> stopsCol;
+        ComPtr<ID2D1GradientStopCollection> stopsCol;
         m_d2dTarget->CreateGradientStopCollection(stops, 2,
             D2D1_GAMMA_2_2, D2D1_EXTEND_MODE_CLAMP, &stopsCol);
         if (stopsCol) {
@@ -190,7 +190,7 @@ bool RenderContext::CreateBrushes() {
             // m_height is set before every CreateBrushes call (ctor and
             // Resize both order it so); guard the degenerate case anyway.
             gp.endPoint = { 0.0f, (float)(std::max)(1u, m_height) };
-            m_d2dTarget->CreateLinearGradientBrush(gp, stopsCol, &m_borderGradBrush);
+            m_d2dTarget->CreateLinearGradientBrush(gp, stopsCol.Get(), &m_borderGradBrush);
         }
     }
 
@@ -218,14 +218,14 @@ void RenderContext::BuildChevronPath() {
     // DrawFence mirrors it about the title-bar midline for the collapsed
     // state. Geometry lives in layout pixels and follows the title-bar
     // height, so it is rebuilt with the styles and on Resize.
-    m_chevronPath.Release();
+    m_chevronPath.Reset();
     if (!m_d2dFactory) return;
     float cx = (float)m_width - m_app.titleH * 0.5f;   // arrow box center
     float cy = m_app.titleH * 0.5f;
     float a  = m_app.titleH * 0.16f;   // half width; 90° aperture (Fluent)
-    CComPtr<ID2D1PathGeometry> path;
+    ComPtr<ID2D1PathGeometry> path;
     if (FAILED(m_d2dFactory->CreatePathGeometry(&path)) || !path) return;
-    CComPtr<ID2D1GeometrySink> sink;
+    ComPtr<ID2D1GeometrySink> sink;
     if (FAILED(path->Open(&sink)) || !sink) return;
     sink->BeginFigure({cx - a, cy + a * 0.55f}, D2D1_FIGURE_BEGIN_HOLLOW);
     sink->AddLine({cx, cy - a * 0.45f});
@@ -236,8 +236,8 @@ void RenderContext::BuildChevronPath() {
 }
 
 void RenderContext::BuildTitleBarPaths() {
-    m_titleBarPath.Release();
-    m_topHiPath.Release();
+    m_titleBarPath.Reset();
+    m_topHiPath.Reset();
     if (!m_d2dFactory) return;
     const float w = (float)m_width, th = m_app.titleH;
     // Match D2D's rounded-rect clamp: a radius larger than half a side
@@ -246,9 +246,9 @@ void RenderContext::BuildTitleBarPaths() {
         (std::min)((std::min)(w, (float)m_height) * 0.5f, th));
     if (effR <= 0.5f) return;   // degenerate — caller falls back to plain rects
 
-    CComPtr<ID2D1PathGeometry> title;
+    ComPtr<ID2D1PathGeometry> title;
     if (FAILED(m_d2dFactory->CreatePathGeometry(&title)) || !title) return;
-    CComPtr<ID2D1GeometrySink> sink;
+    ComPtr<ID2D1GeometrySink> sink;
     if (FAILED(title->Open(&sink)) || !sink) return;
     sink->BeginFigure({0.0f, effR}, D2D1_FIGURE_BEGIN_FILLED);
     D2D1_ARC_SEGMENT arc = {};
@@ -269,15 +269,15 @@ void RenderContext::BuildTitleBarPaths() {
 
     // Highlight strip clipped to the rounded shape (rect ∩ title path), so
     // it cannot poke into the transparent corner cutouts.
-    CComPtr<ID2D1RectangleGeometry> stripRect;
+    ComPtr<ID2D1RectangleGeometry> stripRect;
     if (FAILED(m_d2dFactory->CreateRectangleGeometry(
             D2D1_RECT_F{0.0f, 0.0f, w, 1.5f}, &stripRect)) || !stripRect) return;
-    CComPtr<ID2D1PathGeometry> strip;
+    ComPtr<ID2D1PathGeometry> strip;
     if (FAILED(m_d2dFactory->CreatePathGeometry(&strip)) || !strip) return;
-    CComPtr<ID2D1GeometrySink> ssink;
+    ComPtr<ID2D1GeometrySink> ssink;
     if (FAILED(strip->Open(&ssink)) || !ssink) return;
-    if (FAILED(m_titleBarPath->CombineWithGeometry(stripRect.p,
-            D2D1_COMBINE_MODE_INTERSECT, nullptr, 0.25f, ssink.p))) {
+    if (FAILED(m_titleBarPath->CombineWithGeometry(stripRect.Get(),
+            D2D1_COMBINE_MODE_INTERSECT, nullptr, 0.25f, ssink.Get()))) {
         ssink->Close();
         return;
     }
@@ -304,10 +304,10 @@ bool RenderContext::CreateTextFormats() {
     m_iconFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);  // center labels under icons
 
     // Ellipsis for long icon names
-    CComPtr<IDWriteInlineObject> ellipsis;
-    m_dwFactory->CreateEllipsisTrimmingSign(m_iconFormat, &ellipsis);
+    ComPtr<IDWriteInlineObject> ellipsis;
+    m_dwFactory->CreateEllipsisTrimmingSign(m_iconFormat.Get(), &ellipsis);
     DWRITE_TRIMMING trim = { DWRITE_TRIMMING_GRANULARITY_CHARACTER, 0, 0 };
-    m_iconFormat->SetTrimming(&trim, ellipsis);
+    m_iconFormat->SetTrimming(&trim, ellipsis.Get());
 
     // List-mode format: left-aligned, vertically centered, same font/size as icons
     m_dwFactory->CreateTextFormat(m_app.fontName, nullptr,
@@ -317,9 +317,9 @@ bool RenderContext::CreateTextFormats() {
         m_listFormat->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
         m_listFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
         m_listFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        CComPtr<IDWriteInlineObject> ellipsis2;
-        m_dwFactory->CreateEllipsisTrimmingSign(m_listFormat, &ellipsis2);
-        m_listFormat->SetTrimming(&trim, ellipsis2);
+        ComPtr<IDWriteInlineObject> ellipsis2;
+        m_dwFactory->CreateEllipsisTrimmingSign(m_listFormat.Get(), &ellipsis2);
+        m_listFormat->SetTrimming(&trim, ellipsis2.Get());
     }
 
     return true;
@@ -330,12 +330,12 @@ void RenderContext::RebuildStyles() {
     // current FenceAppearance. Deliberately does NOT touch the render target,
     // WIC bitmap, DIB, icon cache or backdrop — that keeps this cheap enough
     // to run on every slider tick for live preview.
-    m_bgBrush.Release(); m_titleBrush.Release(); m_sepBrush.Release();
-    m_textBrush.Release(); m_iconTextBrush.Release(); m_accentBrush.Release();
-    m_borderGradBrush.Release(); m_topHiBrush.Release();
-    m_marqueeFillBrush.Release(); m_marqueeEdgeBrush.Release();
-    m_chevronBrush.Release(); m_chevronPlate.Release();
-    m_titleFormat.Release(); m_iconFormat.Release(); m_listFormat.Release();
+    m_bgBrush.Reset(); m_titleBrush.Reset(); m_sepBrush.Reset();
+    m_textBrush.Reset(); m_iconTextBrush.Reset(); m_accentBrush.Reset();
+    m_borderGradBrush.Reset(); m_topHiBrush.Reset();
+    m_marqueeFillBrush.Reset(); m_marqueeEdgeBrush.Reset();
+    m_chevronBrush.Reset(); m_chevronPlate.Reset();
+    m_titleFormat.Reset(); m_iconFormat.Reset(); m_listFormat.Reset();
     CreateBrushes();
     CreateTextFormats();
     BuildChevronPath();   // geometry follows the (possibly changed) titleH
@@ -363,9 +363,9 @@ bool RenderContext::CreateDibDC() {
 
 // ── Icon loading ──
 
-CComPtr<ID2D1Bitmap> RenderContext::MakeBitmapFromPixels(const BYTE* bgra, int w, int h) {
+ComPtr<ID2D1Bitmap> RenderContext::MakeBitmapFromPixels(const BYTE* bgra, int w, int h) {
     if (w <= 0 || h <= 0) return nullptr;
-    CComPtr<IWICBitmap> wicBmp;
+    ComPtr<IWICBitmap> wicBmp;
     HRESULT hr = m_wicFactory->CreateBitmapFromMemory(
         (UINT)w, (UINT)h, GUID_WICPixelFormat32bppPBGRA,
         (UINT)w * 4, (UINT)((size_t)w * h * 4), const_cast<BYTE*>(bgra), &wicBmp);
@@ -373,15 +373,15 @@ CComPtr<ID2D1Bitmap> RenderContext::MakeBitmapFromPixels(const BYTE* bgra, int w
     // Render target runs at 96 DPI → WIC bitmap DIP size equals its pixel
     // size, so layout math in pixels stays exact.
     wicBmp->SetResolution(96.0f, 96.0f);
-    CComPtr<ID2D1Bitmap> d2dIcon;
-    if (FAILED(m_d2dTarget->CreateBitmapFromWicBitmap(wicBmp.p, nullptr, &d2dIcon)))
+    ComPtr<ID2D1Bitmap> d2dIcon;
+    if (FAILED(m_d2dTarget->CreateBitmapFromWicBitmap(wicBmp.Get(), nullptr, &d2dIcon)))
         return nullptr;
     return d2dIcon;
 }
 
-CComPtr<ID2D1Bitmap> RenderContext::TryLoadIcon(int iconIndex, int imgList,
+ComPtr<ID2D1Bitmap> RenderContext::TryLoadIcon(int iconIndex, int imgList,
                                                 bool cropPadded) {
-    CComPtr<IImageList> spImageList;
+    ComPtr<IImageList> spImageList;
     if (FAILED(SHGetImageList(imgList, IID_PPV_ARGS(&spImageList))) || !spImageList)
         return nullptr;
     HICON hIcon = nullptr;
@@ -421,9 +421,9 @@ CComPtr<ID2D1Bitmap> RenderContext::TryLoadIcon(int iconIndex, int imgList,
 
 ID2D1Bitmap* RenderContext::LoadFileIcon(const std::wstring& filePath) {
     auto it = m_iconCache.find(filePath);
-    if (it != m_iconCache.end()) return it->second.p;
+    if (it != m_iconCache.end()) return it->second.Get();
 
-    CComPtr<ID2D1Bitmap> d2dIcon;
+    ComPtr<ID2D1Bitmap> d2dIcon;
 
     SHFILEINFOW shfi = {};
     // Namespace paths (::{CLSID}) need PIDL-based resolution;
@@ -452,7 +452,7 @@ ID2D1Bitmap* RenderContext::LoadFileIcon(const std::wstring& filePath) {
         static const int lists[3] = { SHIL_LARGE, SHIL_EXTRALARGE, SHIL_JUMBO };
         float need = m_app.imgSize;
         for (int L : lists) {
-            CComPtr<ID2D1Bitmap> bmp = TryLoadIcon(shfi.iIcon, L, L == SHIL_JUMBO);
+            ComPtr<ID2D1Bitmap> bmp = TryLoadIcon(shfi.iIcon, L, L == SHIL_JUMBO);
             if (!bmp) continue;
             d2dIcon = bmp;
             D2D1_SIZE_F sz = bmp->GetSize();
@@ -463,7 +463,7 @@ ID2D1Bitmap* RenderContext::LoadFileIcon(const std::wstring& filePath) {
     // Cache failures too: a path that cannot resolve an icon must not
     // re-query the shell on every redraw (redraws run at drag frequency).
     m_iconCache[filePath] = d2dIcon;
-    return d2dIcon.p;
+    return d2dIcon.Get();
 }
 
 // ── Frosted-glass backdrop ──
@@ -618,25 +618,25 @@ void RenderContext::SetBackdrop(const BYTE* bgrx, int w, int h) {
 
     // Upload the SMALL image through WIC → D2D bitmap. The render target
     // runs at 96 DPI, so bitmap pixels map 1:1 to window pixels.
-    CComPtr<IWICBitmap> wb;
+    ComPtr<IWICBitmap> wb;
     HRESULT hr = m_wicFactory->CreateBitmapFromMemory(
         cw, ch, GUID_WICPixelFormat32bppBGRA,
         (UINT)cw * 4, (UINT)px.size(), px.data(), &wb);
     if (FAILED(hr) || !wb) return;
     wb->SetResolution(96.0f, 96.0f);
 
-    CComPtr<ID2D1Bitmap> bmp;
-    if (FAILED(m_d2dTarget->CreateBitmapFromWicBitmap(wb.p, nullptr, &bmp)) || !bmp)
+    ComPtr<ID2D1Bitmap> bmp;
+    if (FAILED(m_d2dTarget->CreateBitmapFromWicBitmap(wb.Get(), nullptr, &bmp)) || !bmp)
         return;
 
-    m_backdropBrush.Release();
+    m_backdropBrush.Reset();
     m_backdropBmp = bmp;
 
     D2D1_BITMAP_BRUSH_PROPERTIES bp = {};
     bp.extendModeX = D2D1_EXTEND_MODE_CLAMP;
     bp.extendModeY = D2D1_EXTEND_MODE_CLAMP;
     bp.interpolationMode = D2D1_BITMAP_INTERPOLATION_MODE_LINEAR;
-    m_d2dTarget->CreateBitmapBrush(m_backdropBmp.p, bp, &m_backdropBrush);
+    m_d2dTarget->CreateBitmapBrush(m_backdropBmp.Get(), bp, &m_backdropBrush);
 
     // ID2D1BitmapBrush samples source pixels 1:1 — it does NOT stretch the
     // bitmap across the filled rect. Scale the ¼-size texture back up to
@@ -670,7 +670,7 @@ bool RenderContext::DrawFence(const std::wstring& title,
                                const FenceViewState* view) {
     float w = (float)m_width, h = (float)m_height;
     float r = m_app.r, th = m_app.titleH;
-    auto& ctx = *m_d2dTarget.p;
+    auto& ctx = *m_d2dTarget.Get();
 
     ctx.Clear(D2D1::ColorF(0, 0, 0, 0));
 
@@ -692,7 +692,7 @@ bool RenderContext::DrawFence(const std::wstring& title,
                 th * 0.16f, th * 0.16f};
             m_chevronPlate->SetColor(D2D1::ColorF(1.0f, 1.0f, 1.0f,
                 chevronDown ? 0.05f : 0.08f));
-            ctx.FillRoundedRectangle(plate, m_chevronPlate.p);
+            ctx.FillRoundedRectangle(plate, m_chevronPlate.Get());
         }
         const float alpha = chevronDown ? 0.75f
                           : (chevronHover ? 0.93f : 0.62f);
@@ -704,34 +704,34 @@ bool RenderContext::DrawFence(const std::wstring& title,
             ? D2D1::Matrix3x2F::Scale(1.0f, -1.0f)
                 * D2D1::Matrix3x2F::Translation(0.0f, 2.0f * cy)
             : D2D1::Matrix3x2F::Identity());
-        ctx.DrawGeometry(m_chevronPath.p, m_chevronBrush.p, sw, m_chevronStroke.p);
+        ctx.DrawGeometry(m_chevronPath.Get(), m_chevronBrush.Get(), sw, m_chevronStroke.Get());
         ctx.SetTransform(D2D1::Matrix3x2F::Identity());
     };
 
     // ── Collapsed: the whole window is the title bar (one rounded pill) ──
     if (collapsed) {
         D2D1_ROUNDED_RECT rr{{0, 0, w, h}, r, r};
-        if (m_backdropBrush) ctx.FillRoundedRectangle(rr, m_backdropBrush.p);
+        if (m_backdropBrush) ctx.FillRoundedRectangle(rr, m_backdropBrush.Get());
         if (renaming) {
-            CComPtr<ID2D1SolidColorBrush> eb;
+            ComPtr<ID2D1SolidColorBrush> eb;
             ctx.CreateSolidColorBrush(D2D1::ColorF(0.10f, 0.22f, 0.42f, 0.92f), &eb);
-            ctx.FillRoundedRectangle(rr, eb.p);
+            ctx.FillRoundedRectangle(rr, eb.Get());
         } else {
-            ctx.FillRoundedRectangle(rr, m_titleBrush.p);
+            ctx.FillRoundedRectangle(rr, m_titleBrush.Get());
         }
         if (m_topHiBrush) {
-            if (m_topHiPath) ctx.FillGeometry(m_topHiPath.p, m_topHiBrush.p);
-            else ctx.FillRectangle(D2D1_RECT_F{0, 0, w, 1.5f}, m_topHiBrush.p);
+            if (m_topHiPath) ctx.FillGeometry(m_topHiPath.Get(), m_topHiBrush.Get());
+            else ctx.FillRectangle(D2D1_RECT_F{0, 0, w, 1.5f}, m_topHiBrush.Get());
         }
         // Left-aligned titles get a left inset only; center/right-aligned
         // ones get symmetric insets so the alignment reads correctly within
         // the visible title region (right edge stops before the chevron box).
         const float pad = 14.0f;
         float tr = (m_app.titleAlign == 0) ? (w - th) : (w - th - pad);
-        ctx.DrawText(title.c_str(), (UINT32)title.size(), m_titleFormat.p,
-            D2D1_RECT_F{pad, 0, tr, th}, m_textBrush.p, D2D1_DRAW_TEXT_OPTIONS_CLIP);
+        ctx.DrawText(title.c_str(), (UINT32)title.size(), m_titleFormat.Get(),
+            D2D1_RECT_F{pad, 0, tr, th}, m_textBrush.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
         drawChevron(true);
-        if (m_borderGradBrush) ctx.DrawRoundedRectangle(rr, m_borderGradBrush.p, 1.0f);
+        if (m_borderGradBrush) ctx.DrawRoundedRectangle(rr, m_borderGradBrush.Get(), 1.0f);
         return true;
     }
 
@@ -739,32 +739,32 @@ bool RenderContext::DrawFence(const std::wstring& title,
     D2D1_ROUNDED_RECT rr{{0, 0, w, h}, r, r};
     // Frosted glass: blurred desktop snapshot first, translucent tint on top.
     if (m_backdropBrush) {
-        ctx.FillRoundedRectangle(rr, m_backdropBrush.p);
+        ctx.FillRoundedRectangle(rr, m_backdropBrush.Get());
     }
-    ctx.FillRoundedRectangle(rr, m_bgBrush.p);
+    ctx.FillRoundedRectangle(rr, m_bgBrush.Get());
 
     // ── Title bar ──
     // A flat FillRectangle would paint square corners over the window's
     // rounded top shape; the cached path carries the same top arcs.
     D2D1_RECT_F titleRect{0, 0, w, th};
-    CComPtr<ID2D1SolidColorBrush> eb;
-    ID2D1Brush* titleFill = m_titleBrush.p;
+    ComPtr<ID2D1SolidColorBrush> eb;
+    ID2D1Brush* titleFill = m_titleBrush.Get();
     if (renaming) {
         ctx.CreateSolidColorBrush(D2D1::ColorF(0.10f, 0.22f, 0.42f, 0.92f), &eb);
-        if (eb) titleFill = eb.p;
+        if (eb) titleFill = eb.Get();
     }
-    if (m_titleBarPath) ctx.FillGeometry(m_titleBarPath.p, titleFill);
+    if (m_titleBarPath) ctx.FillGeometry(m_titleBarPath.Get(), titleFill);
     else ctx.FillRectangle(titleRect, titleFill);
 
     // ── Top highlight (subtle 3D edge) — cached brush, redraws are hot ──
     if (m_topHiBrush) {
-        if (m_topHiPath) ctx.FillGeometry(m_topHiPath.p, m_topHiBrush.p);
-        else ctx.FillRectangle(D2D1_RECT_F{0, 0, w, 1.5f}, m_topHiBrush.p);
+        if (m_topHiPath) ctx.FillGeometry(m_topHiPath.Get(), m_topHiBrush.Get());
+        else ctx.FillRectangle(D2D1_RECT_F{0, 0, w, 1.5f}, m_topHiBrush.Get());
     }
 
     // ── Separator ──
     D2D1_RECT_F sepRect{0, th - 0.5f, w, th + 0.5f};
-    ctx.FillRectangle(sepRect, m_sepBrush.p);
+    ctx.FillRectangle(sepRect, m_sepBrush.Get());
 
     // ── Title text (right edge leaves room for the collapse chevron) ──
     {
@@ -772,7 +772,7 @@ bool RenderContext::DrawFence(const std::wstring& title,
         float tr = (m_app.titleAlign == 0) ? (w - th) : (w - th - pad);
         D2D1_RECT_F textRect{pad, 0, tr, th};
         ctx.DrawText(title.c_str(), (UINT32)title.size(),
-            m_titleFormat.p, textRect, m_textBrush.p,
+            m_titleFormat.Get(), textRect, m_textBrush.Get(),
             D2D1_DRAW_TEXT_OPTIONS_CLIP);
     }
 
@@ -788,47 +788,47 @@ bool RenderContext::DrawFence(const std::wstring& title,
 
         // Field background
         D2D1_ROUNDED_RECT sbox{ {sx, sy, sx + sw, sy + sbh}, 4.0f, 4.0f };
-        CComPtr<ID2D1SolidColorBrush> sb;
+        ComPtr<ID2D1SolidColorBrush> sb;
         ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.07f), &sb);
-        if (sb) ctx.FillRoundedRectangle(sbox, sb.p);
-        CComPtr<ID2D1SolidColorBrush> se;
+        if (sb) ctx.FillRoundedRectangle(sbox, sb.Get());
+        ComPtr<ID2D1SolidColorBrush> se;
         ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.10f), &se);
-        if (se) ctx.DrawRoundedRectangle(sbox, se.p, 1.0f);
+        if (se) ctx.DrawRoundedRectangle(sbox, se.Get(), 1.0f);
 
         // Magnifier icon (circle + handle)
         float mgCx = sx + 14.0f, mgCy = sy + sbh * 0.5f, mgR = 5.0f;
-        CComPtr<ID2D1SolidColorBrush> mgb;
+        ComPtr<ID2D1SolidColorBrush> mgb;
         ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.35f), &mgb);
         if (mgb) {
             D2D1_ELLIPSE mgEllipse{ {mgCx, mgCy}, mgR, mgR };
-            ctx.DrawEllipse(mgEllipse, mgb.p, 1.5f);
+            ctx.DrawEllipse(mgEllipse, mgb.Get(), 1.5f);
             float a45 = 3.14159f / 4.0f;
             float hx = mgCx + mgR * cosf(a45), hy = mgCy + mgR * sinf(a45);
             float hx2 = mgCx + (mgR + 3.5f) * cosf(a45);
             float hy2 = mgCy + (mgR + 3.5f) * sinf(a45);
-            ctx.DrawLine({hx, hy}, {hx2, hy2}, mgb.p, 1.5f);
+            ctx.DrawLine({hx, hy}, {hx2, hy2}, mgb.Get(), 1.5f);
         }
 
         // Text or placeholder
         float tx = sx + 28.0f;
         D2D1_RECT_F stxt{ tx, sy, sx + sw - 8.0f, sy + sbh };
         if (view->searchText->empty()) {
-            CComPtr<ID2D1SolidColorBrush> phb;
+            ComPtr<ID2D1SolidColorBrush> phb;
             ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.25f), &phb);
             static const wchar_t* kSearchHint = L"Search\u2026";
             if (phb) ctx.DrawText(kSearchHint, (UINT32)wcslen(kSearchHint),
-                m_listFormat.p, stxt, phb.p, D2D1_DRAW_TEXT_OPTIONS_CLIP);
+                m_listFormat.Get(), stxt, phb.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
             m_searchTextW = 0.0f;   // caret at start of field
         } else {
             ctx.DrawText(view->searchText->c_str(), (UINT32)view->searchText->size(),
-                m_listFormat.p, stxt, m_iconTextBrush.p,
+                m_listFormat.Get(), stxt, m_iconTextBrush.Get(),
                 D2D1_DRAW_TEXT_OPTIONS_CLIP);
             if (*view->searchText != m_searchTextCache) {
                 m_searchTextCache = *view->searchText;
-                CComPtr<IDWriteTextLayout> layout;
+                ComPtr<IDWriteTextLayout> layout;
                 if (SUCCEEDED(m_dwFactory->CreateTextLayout(
                         view->searchText->c_str(), (UINT32)view->searchText->size(),
-                        m_listFormat.p, 2000.0f, sbh, &layout)) && layout) {
+                        m_listFormat.Get(), 2000.0f, sbh, &layout)) && layout) {
                     DWRITE_TEXT_METRICS tm = {};
                     layout->GetMetrics(&tm);
                     m_searchTextW = tm.width;
@@ -839,10 +839,10 @@ bool RenderContext::DrawFence(const std::wstring& title,
         // Caret (blinks regardless of whether text is present)
         if (view->caretOn) {
             float cx = tx + m_searchTextW + 1.0f;
-            CComPtr<ID2D1SolidColorBrush> cb;
+            ComPtr<ID2D1SolidColorBrush> cb;
             ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.7f), &cb);
             if (cb) ctx.FillRectangle(
-                D2D1_RECT_F{ cx, sy + 4.0f, cx + 1.5f, sy + sbh - 4.0f }, cb.p);
+                D2D1_RECT_F{ cx, sy + 4.0f, cx + 1.5f, sy + sbh - 4.0f }, cb.Get());
         }
     }
 
@@ -851,7 +851,7 @@ bool RenderContext::DrawFence(const std::wstring& title,
         static const wchar_t* kLoading = L"Loading\u2026";
         D2D1_RECT_F lr{ 4.0f, bodyTop, w - 4.0f, h };
         ctx.DrawText(kLoading, (UINT32)wcslen(kLoading),
-            m_iconFormat.p, lr, m_iconTextBrush.p,
+            m_iconFormat.Get(), lr, m_iconTextBrush.Get(),
             D2D1_DRAW_TEXT_OPTIONS_CLIP);
     }
 
@@ -916,11 +916,11 @@ bool RenderContext::DrawFence(const std::wstring& title,
                     D2D1_ROUNDED_RECT plate{{cx + 1, clipTop + 1,
                                              cx + cellW - 1, clipTop + clipH - 1},
                                             cellR, cellR};
-                    CComPtr<ID2D1SolidColorBrush> fb, eb;
+                    ComPtr<ID2D1SolidColorBrush> fb, eb;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(cr, cg, cb, fillA), &fb);
                     ctx.CreateSolidColorBrush(D2D1::ColorF(cr, cg, cb, edgeA), &eb);
-                    if (fb) ctx.FillRoundedRectangle(plate, fb.p);
-                    if (eb) ctx.DrawRoundedRectangle(plate, eb.p, 1.0f);
+                    if (fb) ctx.FillRoundedRectangle(plate, fb.Get());
+                    if (eb) ctx.DrawRoundedRectangle(plate, eb.Get(), 1.0f);
                 }
 
                 // Icon: vertically centered in the visible portion of the row
@@ -941,26 +941,26 @@ bool RenderContext::DrawFence(const std::wstring& title,
                 // Text: positioned in the visible row portion
                 float tx = cx + listIconSz + 8.0f;
                 D2D1_RECT_F textRect{tx, clipTop, cx + cellW - 4.0f, clipTop + clipH};
-                auto* listFmt = m_listFormat.p ? m_listFormat.p : m_iconFormat.p;
-                auto* textBrush = selected ? m_textBrush.p : m_iconTextBrush.p;
+                auto* listFmt = m_listFormat.Get() ? m_listFormat.Get() : m_iconFormat.Get();
+                auto* textBrush = selected ? m_textBrush.Get() : m_iconTextBrush.Get();
                 if (renamingThis) {
                     D2D1_ROUNDED_RECT box{{tx - 2.0f, clipTop + 1.0f,
                                            cx + cellW - 2.0f, clipTop + clipH - 1.0f},
                                           cellR * 0.5f, cellR * 0.5f};
-                    CComPtr<ID2D1SolidColorBrush> bgB, bdB;
+                    ComPtr<ID2D1SolidColorBrush> bgB, bdB;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(0.11f, 0.12f, 0.15f, 0.96f), &bgB);
                     ctx.CreateSolidColorBrush(D2D1::ColorF(
                         m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.9f), &bdB);
-                    if (bgB) ctx.FillRoundedRectangle(box, bgB.p);
-                    if (bdB) ctx.DrawRoundedRectangle(box, bdB.p, 1.0f);
+                    if (bgB) ctx.FillRoundedRectangle(box, bgB.Get());
+                    if (bdB) ctx.DrawRoundedRectangle(box, bdB.Get(), 1.0f);
                     ctx.DrawText(view->iconRenameText->c_str(),
                         (UINT32)view->iconRenameText->size(),
-                        listFmt, textRect, m_textBrush.p,
+                        listFmt, textRect, m_textBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                     if (view->renameCaret >= 0) {
                         std::wstring prefix = view->iconRenameText->substr(
                             0, (size_t)view->renameCaret);
-                        CComPtr<IDWriteTextLayout> pl;
+                        ComPtr<IDWriteTextLayout> pl;
                         float pw = 0.0f;
                         if (SUCCEEDED(m_dwFactory->CreateTextLayout(
                                 prefix.c_str(), (UINT32)prefix.size(), listFmt,
@@ -969,19 +969,19 @@ bool RenderContext::DrawFence(const std::wstring& title,
                             pl->GetMetrics(&tm);
                             pw = tm.width;
                         }
-                        CComPtr<ID2D1SolidColorBrush> cb;
+                        ComPtr<ID2D1SolidColorBrush> cb;
                         ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.85f), &cb);
                         if (cb) ctx.FillRectangle(D2D1_RECT_F{
                             tx + pw, clipTop + 2.0f, tx + pw + 1.5f,
-                            clipTop + clipH - 2.0f}, cb.p);
+                            clipTop + clipH - 2.0f}, cb.Get());
                     }
                 } else if (dragged) {
-                    CComPtr<ID2D1SolidColorBrush> faded;
+                    ComPtr<ID2D1SolidColorBrush> faded;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(
                         m_app.iconText[0], m_app.iconText[1], m_app.iconText[2],
                         m_app.iconText[3] * glyphAlpha), &faded);
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                        listFmt, textRect, faded ? faded.p : m_iconTextBrush.p,
+                        listFmt, textRect, faded ? faded.Get() : m_iconTextBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                 } else {
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
@@ -1005,11 +1005,11 @@ bool RenderContext::DrawFence(const std::wstring& title,
                     D2D1_ROUNDED_RECT plate{{cx + 1, cy + 1,
                                              cx + cellW - 1, cy + cellH - 1},
                                             cellR, cellR};
-                    CComPtr<ID2D1SolidColorBrush> fillB, edgeB;
+                    ComPtr<ID2D1SolidColorBrush> fillB, edgeB;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(cr, cg, cb, fillA), &fillB);
                     ctx.CreateSolidColorBrush(D2D1::ColorF(cr, cg, cb, edgeA), &edgeB);
-                    if (fillB) ctx.FillRoundedRectangle(plate, fillB.p);
-                    if (edgeB) ctx.DrawRoundedRectangle(plate, edgeB.p, 1.0f);
+                    if (fillB) ctx.FillRoundedRectangle(plate, fillB.Get());
+                    if (edgeB) ctx.DrawRoundedRectangle(plate, edgeB.Get(), 1.0f);
                 }
 
                 if (iconBmp) {
@@ -1029,11 +1029,11 @@ bool RenderContext::DrawFence(const std::wstring& title,
                     // Explorer-style rename edit box: opaque backing + accent
                     // ring, sized to the live text.
                     float textW = 0.0f, textH = cellH - (iconSz + 4.0f);
-                    CComPtr<IDWriteTextLayout> layout;
+                    ComPtr<IDWriteTextLayout> layout;
                     if (SUCCEEDED(m_dwFactory->CreateTextLayout(
                             view->iconRenameText->c_str(),
                             (UINT32)view->iconRenameText->size(),
-                            m_iconFormat.p, cellW, cellH, &layout)) && layout) {
+                            m_iconFormat.Get(), cellW, cellH, &layout)) && layout) {
                         DWRITE_TEXT_METRICS tm = {};
                         layout->GetMetrics(&tm);
                         textW = tm.width; textH = tm.height;
@@ -1042,51 +1042,51 @@ bool RenderContext::DrawFence(const std::wstring& title,
                     D2D1_ROUNDED_RECT box{{bx - 3.0f, textRect.top - 1.0f,
                                            bx + textW + 3.0f, textRect.top + textH + 1.5f},
                                           cellR * 0.5f, cellR * 0.5f};
-                    CComPtr<ID2D1SolidColorBrush> bgB, bdB;
+                    ComPtr<ID2D1SolidColorBrush> bgB, bdB;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(0.11f, 0.12f, 0.15f, 0.96f), &bgB);
                     ctx.CreateSolidColorBrush(D2D1::ColorF(
                         m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.9f), &bdB);
-                    if (bgB) ctx.FillRoundedRectangle(box, bgB.p);
-                    if (bdB) ctx.DrawRoundedRectangle(box, bdB.p, 1.0f);
+                    if (bgB) ctx.FillRoundedRectangle(box, bgB.Get());
+                    if (bdB) ctx.DrawRoundedRectangle(box, bdB.Get(), 1.0f);
                     ctx.DrawText(view->iconRenameText->c_str(),
                         (UINT32)view->iconRenameText->size(),
-                        m_iconFormat.p, textRect, m_textBrush.p,
+                        m_iconFormat.Get(), textRect, m_textBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                     if (view->renameCaret >= 0) {
                         // The label format centers the text in the full cell
                         // width; the caret lands right after the typed prefix.
                         std::wstring prefix = view->iconRenameText->substr(
                             0, (size_t)view->renameCaret);
-                        CComPtr<IDWriteTextLayout> pl;
+                        ComPtr<IDWriteTextLayout> pl;
                         float pw = 0.0f;
                         if (SUCCEEDED(m_dwFactory->CreateTextLayout(
                                 prefix.c_str(), (UINT32)prefix.size(),
-                                m_iconFormat.p, cellW, cellH, &pl)) && pl) {
+                                m_iconFormat.Get(), cellW, cellH, &pl)) && pl) {
                             DWRITE_TEXT_METRICS tm = {};
                             pl->GetMetrics(&tm);
                             pw = tm.width;
                         }
                         float caretX = cx + (cellW - textW) * 0.5f + pw;
-                        CComPtr<ID2D1SolidColorBrush> cb;
+                        ComPtr<ID2D1SolidColorBrush> cb;
                         ctx.CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.85f), &cb);
                         if (cb) ctx.FillRectangle(D2D1_RECT_F{
                             caretX, textRect.top + 1.0f, caretX + 1.5f,
-                            textRect.top + textH + 1.0f}, cb.p);
+                            textRect.top + textH + 1.0f}, cb.Get());
                     }
                 } else if (dragged) {
-                    CComPtr<ID2D1SolidColorBrush> faded;
+                    ComPtr<ID2D1SolidColorBrush> faded;
                     ctx.CreateSolidColorBrush(D2D1::ColorF(
                         m_app.iconText[0], m_app.iconText[1], m_app.iconText[2],
                         m_app.iconText[3] * glyphAlpha), &faded);
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                        m_iconFormat.p, textRect, faded ? faded.p : m_iconTextBrush.p,
+                        m_iconFormat.Get(), textRect, faded ? faded.Get() : m_iconTextBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                 } else if (selected && selCount == 1) {
                     if (icons[i].path != m_selLabelPath) {
-                        CComPtr<IDWriteTextLayout> layout;
+                        ComPtr<IDWriteTextLayout> layout;
                         if (SUCCEEDED(m_dwFactory->CreateTextLayout(
                                 icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                                m_iconFormat.p, cellW, cellH, &layout)) && layout) {
+                                m_iconFormat.Get(), cellW, cellH, &layout)) && layout) {
                             DWRITE_TEXT_METRICS tm = {};
                             layout->GetMetrics(&tm);
                             m_selLabelW = tm.width;
@@ -1100,21 +1100,21 @@ bool RenderContext::DrawFence(const std::wstring& title,
                             {bx - 3.0f, textRect.top - 1.0f,
                              bx + m_selLabelW + 3.0f, textRect.top + m_selLabelH + 1.5f},
                             m_app.r * 0.25f, m_app.r * 0.25f};
-                        CComPtr<ID2D1SolidColorBrush> boxB;
+                        ComPtr<ID2D1SolidColorBrush> boxB;
                         ctx.CreateSolidColorBrush(D2D1::ColorF(
                             m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.92f), &boxB);
-                        if (boxB) ctx.FillRoundedRectangle(box, boxB.p);
+                        if (boxB) ctx.FillRoundedRectangle(box, boxB.Get());
                     }
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                        m_iconFormat.p, textRect, m_textBrush.p,
+                        m_iconFormat.Get(), textRect, m_textBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                 } else if (selected) {
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                        m_iconFormat.p, textRect, m_textBrush.p,
+                        m_iconFormat.Get(), textRect, m_textBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                 } else {
                     ctx.DrawText(icons[i].name.c_str(), (UINT32)icons[i].name.size(),
-                        m_iconFormat.p, textRect, m_iconTextBrush.p,
+                        m_iconFormat.Get(), textRect, m_iconTextBrush.Get(),
                         D2D1_DRAW_TEXT_OPTIONS_CLIP | D2D1_DRAW_TEXT_OPTIONS_NO_SNAP);
                 }
             }
@@ -1127,7 +1127,7 @@ bool RenderContext::DrawFence(const std::wstring& title,
         static const wchar_t* kNoResults = L"No results";
         D2D1_RECT_F nr{ 4.0f, bodyTop, w - 4.0f, h };
         ctx.DrawText(kNoResults, (UINT32)wcslen(kNoResults),
-            m_iconFormat.p, nr, m_iconTextBrush.p,
+            m_iconFormat.Get(), nr, m_iconTextBrush.Get(),
             D2D1_DRAW_TEXT_OPTIONS_CLIP);
     }
 
@@ -1150,15 +1150,15 @@ bool RenderContext::DrawFence(const std::wstring& title,
 
             D2D1_ROUNDED_RECT track{{trackX, trackTop, trackX + sbW, trackBot},
                                     sbW * 0.5f, sbW * 0.5f};
-            CComPtr<ID2D1SolidColorBrush> tb;
+            ComPtr<ID2D1SolidColorBrush> tb;
             ctx.CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 0.08f), &tb);
-            if (tb) ctx.FillRoundedRectangle(track, tb.p);
+            if (tb) ctx.FillRoundedRectangle(track, tb.Get());
 
             D2D1_ROUNDED_RECT thumb{{trackX, thumbTop, trackX + sbW, thumbTop + thumbH},
                                     sbW * 0.5f, sbW * 0.5f};
-            CComPtr<ID2D1SolidColorBrush> mb;
+            ComPtr<ID2D1SolidColorBrush> mb;
             ctx.CreateSolidColorBrush(D2D1::ColorF(1, 1, 1, 0.25f), &mb);
-            if (mb) ctx.FillRoundedRectangle(thumb, mb.p);
+            if (mb) ctx.FillRoundedRectangle(thumb, mb.Get());
         }
     }
 
@@ -1170,21 +1170,21 @@ bool RenderContext::DrawFence(const std::wstring& title,
     if (marquee && marquee->right > marquee->left && marquee->bottom > marquee->top) {
         D2D1_RECT_F mr{(float)marquee->left, (float)marquee->top,
                        (float)marquee->right, (float)marquee->bottom};
-        if (m_marqueeFillBrush) ctx.FillRectangle(mr, m_marqueeFillBrush.p);
-        if (m_marqueeEdgeBrush) ctx.DrawRectangle(mr, m_marqueeEdgeBrush.p, 1.0f);
+        if (m_marqueeFillBrush) ctx.FillRectangle(mr, m_marqueeFillBrush.Get());
+        if (m_marqueeEdgeBrush) ctx.DrawRectangle(mr, m_marqueeEdgeBrush.Get(), 1.0f);
     }
 
     // ── Border (drawn last, on top): vertical gradient, bright top edge ──
-    if (m_borderGradBrush) ctx.DrawRoundedRectangle(rr, m_borderGradBrush.p, 1.0f);
+    if (m_borderGradBrush) ctx.DrawRoundedRectangle(rr, m_borderGradBrush.Get(), 1.0f);
 
     // ── Drag-over accent ──
     if (dragOver) {
-        CComPtr<ID2D1SolidColorBrush> hl2;
+        ComPtr<ID2D1SolidColorBrush> hl2;
         ctx.CreateSolidColorBrush(D2D1::ColorF(
             m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.55f), &hl2);
         if (hl2) {
             D2D1_ROUNDED_RECT hlRR{{1.5f, 1.5f, w - 1.5f, h - 1.5f}, r - 1, r - 1};
-            ctx.DrawRoundedRectangle(hlRR, hl2.p, 2.0f);
+            ctx.DrawRoundedRectangle(hlRR, hl2.Get(), 2.0f);
         }
     }
 
@@ -1195,16 +1195,16 @@ bool RenderContext::Resize(UINT w, UINT h) {
     m_iconCache.clear();
     // Backdrop belongs to the old render target / old size; FenceWindow
     // re-captures it right after the resize settles.
-    m_backdropBrush.Release();
-    m_backdropBmp.Release();
-    m_bgBrush.Release(); m_titleBrush.Release(); m_sepBrush.Release();
-    m_textBrush.Release(); m_iconTextBrush.Release(); m_accentBrush.Release();
-    m_borderGradBrush.Release(); m_topHiBrush.Release();
-    m_marqueeFillBrush.Release(); m_marqueeEdgeBrush.Release();
-    m_chevronBrush.Release(); m_chevronPlate.Release();
-    m_titleFormat.Release(); m_iconFormat.Release(); m_listFormat.Release();
-    m_d2dTarget.Release();
-    m_wicBitmap.Release();
+    m_backdropBrush.Reset();
+    m_backdropBmp.Reset();
+    m_bgBrush.Reset(); m_titleBrush.Reset(); m_sepBrush.Reset();
+    m_textBrush.Reset(); m_iconTextBrush.Reset(); m_accentBrush.Reset();
+    m_borderGradBrush.Reset(); m_topHiBrush.Reset();
+    m_marqueeFillBrush.Reset(); m_marqueeEdgeBrush.Reset();
+    m_chevronBrush.Reset(); m_chevronPlate.Reset();
+    m_titleFormat.Reset(); m_iconFormat.Reset(); m_listFormat.Reset();
+    m_d2dTarget.Reset();
+    m_wicBitmap.Reset();
 
     m_width = w; m_height = h;
     m_wicFactory->CreateBitmap(w, h, GUID_WICPixelFormat32bppPBGRA,
@@ -1216,7 +1216,7 @@ bool RenderContext::Resize(UINT w, UINT h) {
     rt.dpiX = 96.0f; rt.dpiY = 96.0f;   // 1 DIP == 1 physical pixel (see ctor)
     rt.usage = D2D1_RENDER_TARGET_USAGE_NONE;
     rt.minLevel = D2D1_FEATURE_LEVEL_DEFAULT;
-    m_d2dFactory->CreateWicBitmapRenderTarget(m_wicBitmap, &rt, &m_d2dTarget);
+    m_d2dFactory->CreateWicBitmapRenderTarget(m_wicBitmap.Get(), &rt, &m_d2dTarget);
     RebuildStyles();   // brushes + text formats against the fresh target
 
     if (m_memDC) { SelectObject(m_memDC, m_oldBmp); DeleteObject(m_dib); DeleteDC(m_memDC); }
@@ -1225,7 +1225,7 @@ bool RenderContext::Resize(UINT w, UINT h) {
 }
 
 bool RenderContext::CopyWicToDib() {
-    CComPtr<IWICBitmapLock> lock;
+    ComPtr<IWICBitmapLock> lock;
     m_wicBitmap->Lock(nullptr, WICBitmapLockRead, &lock);
     UINT bufSize = 0; BYTE* src = nullptr;
     lock->GetDataPointer(&bufSize, &src);

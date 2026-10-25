@@ -1,39 +1,43 @@
 # openFences
 
-Stardock Fences 的开源替代。Windows 桌面图标分组管理工具，使用 C++/Win32 原生构建。
+An open-source alternative to Stardock Fences: a Windows desktop icon grouping tool built natively with C++/Win32.
 
-## 核心架构
+## Core architecture
 
-- **语言**: C++17（MSVC v141 工具链，VS2017），`CMAKE_CXX_STANDARD 20`
-- **窗口**: Win32 原生 `WS_CHILD` 窗口，挂载在 explorer 的 `SysListView32` 桌面图标列表下
-- **渲染**: Direct2D + DirectWrite + WIC，`WS_EX_LAYERED` + `UpdateLayeredWindow` 管线
-- **序列化**: nlohmann/json，配置文件 `%APPDATA%\openFences\config.json`
-- **构建**: CMake 3.20+，MSVC（VS2017 generator），x64，`/MT` 静态链接 CRT
-- **产物**: 单 exe（~780KB），无依赖，便携运行
+- **Language:** C++17 (MSVC v141 toolchain, VS2017), `CMAKE_CXX_STANDARD 20`
+- **Windows:** native Win32 `WS_CHILD` windows attached under explorer's `SysListView32` desktop icon list
+- **Rendering:** Direct2D + DirectWrite + WIC, `WS_EX_LAYERED` + `UpdateLayeredWindow` pipeline
+- **Serialization:** nlohmann/json, config file `%APPDATA%\openFences\config.json`
+- **Build:** CMake 3.20+, MSVC (VS2017 generator), x64, `/MT` statically linked CRT
+- **Output:** a single exe (~780 KB), no dependencies, portable
 
-## 源文件（`cpp/src/`）
+## Source files (`src/`)
 
-| 文件 | 职责 |
-|------|------|
-| `main.cpp` | 入口、托盘菜单、桌面图标管理、隐藏/显示调度 |
-| `fence_window.cpp` | Fence 窗口：创建、拖拽、缩放、折叠、重命名、右键菜单 |
-| `render.cpp` | Direct2D 渲染管线：毛玻璃（Acrylic）、边框、文字、布局 |
-| `context_menu.cpp` | Win11 风格 Fluent 自绘菜单 + LL 钩子关闭 |
-| `settings_panel.cpp` | 外观设置面板（背景色、标题色、对齐、字体大小等） |
-| `config.cpp` | 配置持久化（读写 JSON、自动保存、开机自启注册表） |
-| `icon_extract.cpp` | 从文件/快捷方式提取图标像素数据 |
-| `menu_icons.cpp` | 菜单项图标的程序化光栅化（矢量字形） |
+| File | Responsibility |
+|------|----------------|
+| `main.cpp` | Entry point, tray menu, desktop icon management, hide/show scheduling |
+| `fence_window.cpp` | Fence window: create, drag, resize, collapse, rename, context menu |
+| `render.cpp` | Direct2D rendering pipeline: frosted glass (Acrylic), border, text, layout |
+| `context_menu.cpp` | Windows 11 style Fluent custom-drawn menu + low-level hook for dismissal |
+| `settings_panel.cpp` | Appearance settings panel (background colour, title colour, alignment, font size, ...) |
+| `config.cpp` | Configuration persistence (read/write JSON, autosave, autostart registry key) |
+| `icon_extract.cpp` | Extracts icon pixel data from files and shortcuts |
+| `menu_icons.cpp` | Programmatic rasterisation of menu item icons (vector glyphs) |
 
-## 构建与运行
+## Build and run
 
 ```bash
-cmake --build cpp/build --config Release --target openfences
-cpp/build/Release/openfences.exe
+cmake -B build -G "Visual Studio 15 2017" -A x64
+cmake --build build --config Release --target openfences
+build/Release/openfences.exe
 ```
 
-## 编码约定
+`build/` is build output and is git-ignored; never commit it. Research spikes live in `tools/` (build with `-DOPENFENCES_BUILD_TOOLS=ON`); `experiments/legacy-hook/` is unused; design notes are in `docs/`.
 
-- 无注释解释"做什么"（命名即文档），注释仅解释"为什么"
-- 禁止每帧/热路径上的堆分配（笔刷缓存复用 `SetColor`）
-- 所有 GDI/D2D/WIC 资源在窗口销毁时 RAII 释放
-- UI 统一：颜色、间距、字体等全局常量定义，禁止硬编码
+## Coding conventions
+
+- No comments that explain *what* the code does (names are the documentation); comments only explain *why*
+- No heap allocations per frame or on hot paths (reuse brushes via `SetColor`)
+- All GDI/D2D/WIC resources are released RAII-style when the window is destroyed
+- Consistent UI: colours, spacing and fonts are defined as global constants, never hard-coded
+- User-visible strings go through the localization layer, not inline literals (Russian support in progress)

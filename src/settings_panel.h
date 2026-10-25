@@ -4,7 +4,7 @@
 #include <windows.h>
 #include <d2d1.h>
 #include <dwrite.h>
-#include <atlbase.h>
+#include "com_ptr.h"
 #include <string>
 #include <vector>
 #include <memory>
@@ -120,11 +120,11 @@ private:
     std::vector<Hit> m_hits;
 
     // Panel-local palette (independent of the fence appearance)
-    CComPtr<ID2D1SolidColorBrush> m_brTint, m_brBorder, m_brHighlight, m_brText,
+    ComPtr<ID2D1SolidColorBrush> m_brTint, m_brBorder, m_brHighlight, m_brText,
         m_brText2, m_brAccent, m_brHover, m_brSel, m_brDanger, m_brTrack,
         m_brThumb, m_brField, m_brSwatchRing;
     // Fixed preset swatches are cached once (not rebuilt on every redraw).
-    CComPtr<ID2D1SolidColorBrush> m_brPanelSw[8], m_brTitleSw[8];
-    CComPtr<IDWriteTextFormat> m_fmtHeader, m_fmtLabel, m_fmtValue, m_fmtSymbol,
+    ComPtr<ID2D1SolidColorBrush> m_brPanelSw[8], m_brTitleSw[8];
+    ComPtr<IDWriteTextFormat> m_fmtHeader, m_fmtLabel, m_fmtValue, m_fmtSymbol,
         m_fmtCenter;
 };

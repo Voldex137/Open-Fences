@@ -1,79 +1,86 @@
 # openFences
 
-> 一个轻量级的 Windows 桌面图标分组管理工具，Stardock Fences 的开源替代。
->
+**English** | [Русский](README.ru.md) | [简体中文](README.zh-CN.md)
+
 > A lightweight Windows desktop icon grouping tool — an open-source alternative to Stardock Fences.
 
 ![platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![lang](https://img.shields.io/badge/language-C%2B%2B17-%23f34b7d)
-![size](https://img.shields.io/badge/size-~780KB-green)
+![license](https://img.shields.io/badge/license-MIT-green)
+
+This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigogo/openFrence) (MIT). The fork focuses on documentation in English, Russian and Chinese, proper multi-language UI support (Russian added), and, longer term, a Linux port (see [Roadmap](#roadmap)).
 
 ---
 
-## 特性 / Features
+## Features
 
-- **桌面图标分组** — 在桌面上创建半透明毛玻璃围栏（Fence），将图标拖入其中自动归组
-- **毛玻璃效果** — Acrylic 风格背景：降采样模糊 + 饱和度增强 + 噪点，贴近 Win11 原生观感
-- **Win11 风格右键菜单** — 自绘 Fluent Design 菜单，带圆角、毛玻璃背景、软阴影
-- **系统托盘常驻** — 托盘图标右键菜单：新建围栏、隐藏/显示全部、切换语言、开机自启、桌面快捷方式
-- **配置持久化** — 围栏布局、图标位置、外观设置自动保存至 `%APPDATA%\openFences\config.json`
-- **多语言** — 支持中文 / English 切换
-- **极轻量** — 单 exe（~780KB），无依赖，无需安装 VC++ 运行库，拷贝即用
-
----
-
-## 快速开始 / Quick Start
-
-1. 下载 [openfences.exe](https://github.com/weiweigogo/openFrence/releases)（最新 Release）
-2. 放到任意目录，双击运行
-3. 右键右下角托盘图标 → 设置语言、开机自启、创建桌面快捷方式
-4. 在桌面上拖拽图标到围栏中即可
-
-> **提示**：如果桌面图标被隐藏导致围栏消失，右键托盘 →「显示桌面图标」即可恢复。围栏会自动停靠在 DefView 上等待图标列表恢复。
+- **Desktop icon grouping** — create translucent frosted-glass "fences" on the desktop; drag icons into them to group them
+- **Frosted glass look** — Acrylic-style background: downsampled blur, saturation boost and noise, close to the native Windows 11 look
+- **Windows 11 style context menu** — custom-drawn Fluent Design menu with rounded corners, blur background and soft shadow
+- **System tray** — new fence, hide/show everything, language, start with Windows, desktop shortcut
+- **Persistent configuration** — fence layout, icon positions and appearance are saved to `%APPDATA%\openFences\config.json`
+- **Multi-language UI** — Chinese and English today, Russian in progress
+- **Tiny** — a single exe (~780 KB), no dependencies, no VC++ runtime needed, portable
 
 ---
 
-## 构建 / Build
+## Quick start
+
+> **Security note.** Upstream committed prebuilt `.exe`/`.dll` files into its repository; this fork removed them. Do not run prebuilt binaries from unknown sources, and prefer building from source. The current app does not inject any DLL into Explorer (the `experiments/legacy-hook` directory is an unused leftover of an early design).
+
+1. Build it from source (see [Build](#build)).
+2. Put `openfences.exe` anywhere and run it.
+3. Right-click the tray icon to set the language, enable autostart or create a desktop shortcut.
+4. Drag desktop icons into a fence.
+
+> **Tip:** if desktop icons are hidden and the fences disappear, right-click the tray icon and choose "Show desktop icons". The fences wait on the desktop view until the icon list returns.
+
+---
+
+## Build
 
 ```bash
-# 前置条件：Visual Studio 2017+（含 Windows 10 SDK）、CMake 3.20+
+# Prerequisites: Visual Studio 2017+ (with the Windows 10 SDK), CMake 3.20+
 
-git clone https://github.com/zw/openFences.git
-cd openFences/cpp
+git clone <this repository>
+cd openFences
 cmake -B build -G "Visual Studio 15 2017" -A x64
 cmake --build build --config Release --target openfences
 ```
 
-产物：`cpp/build/Release/openfences.exe`（~780KB，静态链接 CRT）
+Output: `build/Release/openfences.exe` (~780 KB, statically linked CRT).
 
 ---
 
-## 项目结构 / Project Layout
+## Project layout
 
 ```
 openFences/
-├── cpp/
-│   ├── CMakeLists.txt          # CMake 构建配置
-│   ├── app.ico                 # 应用程序图标（可替换）
-│   └── src/
-│       ├── main.cpp            # 入口、托盘、桌面管理
-│       ├── fence_window.cpp    # Fence 窗口（创建/拖拽/缩放）
-│       ├── render.cpp          # Direct2D 渲染（毛玻璃/Acrylic）
-│       ├── context_menu.cpp    # Win11 Fluent 自绘右键菜单
-│       ├── settings_panel.cpp  # 外观设置面板
-│       ├── config.cpp          # JSON 配置读写、开机自启
-│       ├── icon_extract.cpp    # 图标提取
-│       ├── menu_icons.cpp      # 菜单矢量图标光栅化
-│       └── resource.h          # 资源 ID 定义
-├── CLAUDE.md                   # 开发指引（供 AI 辅助）
-└── README.md
+├── CMakeLists.txt             # CMake build configuration
+├── src/                       # the application
+│   ├── main.cpp               # entry point, tray, desktop management
+│   ├── fence_window.cpp       # fence window (create / drag / resize)
+│   ├── render.cpp             # Direct2D rendering (frosted glass / Acrylic)
+│   ├── context_menu.cpp       # Windows 11 Fluent custom context menu
+│   ├── settings_panel.cpp     # appearance settings panel
+│   ├── config.cpp             # JSON config, autostart
+│   ├── icon_extract.cpp       # icon extraction
+│   ├── menu_icons.cpp         # vector menu icons rasterised in code
+│   ├── explorer_sort.cpp      # desktop sort-order handling
+│   └── resource.h             # resource IDs
+├── resources/app.ico          # application icon (replaceable)
+├── tools/                     # research spikes and diagnostics (off by default)
+├── experiments/legacy-hook/   # unused DLL from an early design
+├── docs/                      # design notes (CPP_DESIGN.md, DEV_PLAN.md)
+├── CLAUDE.md                  # development guide for AI assistants
+└── README*.md
 ```
 
 ---
 
-## 配置 / Configuration
+## Configuration
 
-配置文件位置：`%APPDATA%\openFences\config.json`
+Config file: `%APPDATA%\openFences\config.json`
 
 ```json
 {
@@ -83,7 +90,7 @@ openFences/
   "fences": [
     {
       "id": "f1",
-      "title": "应用",
+      "title": "Apps",
       "x": 75, "y": 75,
       "w": 420, "h": 420,
       "collapsed": false,
@@ -97,26 +104,35 @@ openFences/
 }
 ```
 
----
-
-## 技术栈 / Tech Stack
-
-- **语言**：C++17
-- **窗口**：Win32 `WS_CHILD` + `WS_EX_LAYERED` + `UpdateLayeredWindow`
-- **渲染**：Direct2D、DirectWrite、WIC
-- **JSON**：[nlohmann/json](https://github.com/nlohmann/json)
-- **构建**：CMake + MSVC（VS2017+），x64，静态链接 CRT（`/MT`）
+`language`: `0` = English, `1` = Chinese (the upstream numbering; Russian will extend it).
 
 ---
 
-## 许可证 / License
+## Tech stack
 
-[MIT](LICENSE)
+- **Language:** C++17
+- **Windows:** Win32 `WS_CHILD` + `WS_EX_LAYERED` + `UpdateLayeredWindow`
+- **Rendering:** Direct2D, DirectWrite, WIC
+- **JSON:** [nlohmann/json](https://github.com/nlohmann/json)
+- **Build:** CMake + MSVC (VS2017+), x64, static CRT (`/MT`)
 
 ---
 
-## 致谢 / Acknowledgments
+## Roadmap
 
-- 图标渲染管线参考了 [nlohmann/json](https://github.com/nlohmann/json) 的设计理念
-- Fluent Design 视觉规范受到 Microsoft WinUI 设计语言的启发
-- Stardock Fences 的原设计为此项目提供了灵感
+- [x] Trilingual documentation (English, Russian, Chinese)
+- [ ] Russian UI (replace the inline English/Chinese pair `Loc(en, zh)` with a string table keyed by language)
+- [ ] Remove committed build artifacts from version control
+- [ ] Linux port (tracked upstream in issue #8). The current code is Win32 / Direct2D, so this means a new UI backend; the desktop-icon model differs per desktop environment (KDE Plasma, GNOME, ...)
+
+---
+
+## License
+
+[MIT](LICENSE). The original copyright notice of the upstream author is kept.
+
+## Acknowledgments
+
+- Upstream project: [weiweigogo/openFrence](https://github.com/weiweigogo/openFrence)
+- [nlohmann/json](https://github.com/nlohmann/json)
+- Stardock Fences for the original idea

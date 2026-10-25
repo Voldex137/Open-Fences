@@ -183,7 +183,7 @@ public:
         if (!self) { *pdwEffect = DROPEFFECT_NONE; return S_OK; }
         self->SetDragOver(false);
 
-        CComPtr<IShellItemArray> items;
+        ComPtr<IShellItemArray> items;
         if (FAILED(SHCreateShellItemArrayFromDataObject(pDataObj, IID_PPV_ARGS(&items))) || !items) {
             *pdwEffect = DROPEFFECT_NONE;
             return S_OK;
@@ -196,7 +196,7 @@ public:
         DWORD count = 0;
         items->GetCount(&count);
         for (DWORD i = 0; i < count; i++) {
-            CComPtr<IShellItem> item;
+            ComPtr<IShellItem> item;
             if (FAILED(items->GetItemAt(i, &item)) || !item) continue;
 
             LPWSTR pwszPath = nullptr;
@@ -1248,8 +1248,8 @@ static HRESULT CreateShellContextMenu(const std::wstring& path, IContextMenu** p
     PIDLIST_ABSOLUTE pidlParent = ILCloneFull(pidlFull);
     if (pidlParent) ILRemoveLastID(pidlParent);
 
-    CComPtr<IShellFolder> spParent;
-    CComPtr<IShellFolder> spDesktop;
+    ComPtr<IShellFolder> spParent;
+    ComPtr<IShellFolder> spDesktop;
     hr = SHGetDesktopFolder(&spDesktop);
     if (SUCCEEDED(hr)) {
         if (!pidlParent || ILIsEmpty(pidlParent)) {
@@ -1306,13 +1306,13 @@ static void SnapshotFolderNames(const std::wstring& dir, std::vector<std::wstrin
 static HRESULT CreateNewMenuHandler(PCIDLIST_ABSOLUTE pidlFolder, IContextMenu** ppCM) {
     *ppCM = nullptr;
 
-    CComPtr<IContextMenu> spCM;
-    HRESULT hr = spCM.CoCreateInstance(kCLSID_NewMenu, nullptr, CLSCTX_INPROC_SERVER);
+    ComPtr<IContextMenu> spCM;
+    HRESULT hr = CoCreateInstance(kCLSID_NewMenu, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&spCM));
     NewDbg(L"CreateNewMenuHandler: pidl=%p isEmpty=%d CoCreate=0x%08X",
            pidlFolder, pidlFolder ? ILIsEmpty(pidlFolder) : -1, (unsigned)hr);
     if (SUCCEEDED(hr)) {
-        CComPtr<IShellExtInit> spInit;
-        hr = spCM.QueryInterface(&spInit);
+        ComPtr<IShellExtInit> spInit;
+        hr = spCM.As(&spInit);
         NewDbg(L"  QI IShellExtInit=0x%08X", (unsigned)hr);
         if (SUCCEEDED(hr)) {
             hr = spInit->Initialize(pidlFolder, nullptr, nullptr);
@@ -1344,7 +1344,7 @@ static bool RunShellContextMenu(HWND hwnd, const std::wstring& path,
                                 bool& renameChosen) {
     invoked = removeChosen = renameChosen = false;
 
-    CComPtr<IContextMenu> spCM;
+    ComPtr<IContextMenu> spCM;
     if (FAILED(CreateShellContextMenu(path, &spCM)) || !spCM) return false;
 
     HMENU menu = CreatePopupMenu();
@@ -1387,7 +1387,7 @@ static bool RunShellContextMenu(HWND hwnd, const std::wstring& path,
     // because Explorer's XAML menu cannot be obtained cross-process. If the
     // Fluent layer fails to start, fall back to the classic system menu.
     SetForegroundWindow(hwnd);
-    int idCmd = FluentMenu::Run(hwnd, spCM, menu, path, ptScreen);
+    int idCmd = FluentMenu::Run(hwnd, spCM.Get(), menu, path, ptScreen);
     if (idCmd < 0)
         idCmd = TrackPopupMenu(menu, TPM_LEFTALIGN | TPM_RETURNCMD | TPM_RIGHTBUTTON,
                                ptScreen.x, ptScreen.y, 0, hwnd, nullptr);
@@ -1434,8 +1434,8 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
     // TrackPopupMenu fallback render the handler's owner-drawn icons.
     if (s_activeNewCM && (msg == WM_INITMENUPOPUP || msg == WM_DRAWITEM ||
                           msg == WM_MEASUREITEM)) {
-        CComPtr<IContextMenu3> cm3;
-        CComPtr<IContextMenu2> cm2;
+        ComPtr<IContextMenu3> cm3;
+        ComPtr<IContextMenu2> cm2;
         s_activeNewCM->QueryInterface(IID_PPV_ARGS(&cm3));
         s_activeNewCM->QueryInterface(IID_PPV_ARGS(&cm2));
         LRESULT lr = 0;
@@ -2025,7 +2025,7 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                                &pidlNewFolder, 0, nullptr);
         else
             SHGetSpecialFolderLocation(nullptr, CSIDL_DESKTOP, &pidlNewFolder);
-        CComPtr<IContextMenu> spNewCM;
+        ComPtr<IContextMenu> spNewCM;
         UINT newMenuPos = 0;
         bool newMenuAdded = false;
         if (pidlNewFolder &&
@@ -2039,8 +2039,8 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                 // the same message Explorer forwards before showing it.
                 HMENU hNewSub = GetSubMenu(menu, newMenuPos);
                 if (hNewSub) {
-                    CComPtr<IContextMenu3> cm3;
-                    CComPtr<IContextMenu2> cm2;
+                    ComPtr<IContextMenu3> cm3;
+                    ComPtr<IContextMenu2> cm2;
                     spNewCM->QueryInterface(IID_PPV_ARGS(&cm3));
                     spNewCM->QueryInterface(IID_PPV_ARGS(&cm2));
                     LRESULT lr = 0;
@@ -2052,10 +2052,10 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
                 NewDbgDumpMenu(menu, 0);
                 NewDbg(L"--- end menu tree ---");
                 newMenuAdded = true;
-                s_activeNewCM = spNewCM;
+                s_activeNewCM = spNewCM.Get();
                 AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
             } else {
-                spNewCM.Release();
+                spNewCM.Reset();
             }
         }
 
@@ -2142,11 +2142,11 @@ LRESULT CALLBACK FenceWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
             case 3: eraseIcon(iconHit); break;
             case 4: SettingsPanel::Run(self); break;
             case 5: {
-                CComPtr<IFileOpenDialog> pDlg;
-                if (SUCCEEDED(pDlg.CoCreateInstance(CLSID_FileOpenDialog))) {
+                ComPtr<IFileOpenDialog> pDlg;
+                if (SUCCEEDED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDlg)))) {
                     pDlg->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR);
                     if (SUCCEEDED(pDlg->Show(hwnd))) {
-                        CComPtr<IShellItem> psi;
+                        ComPtr<IShellItem> psi;
                         if (SUCCEEDED(pDlg->GetResult(&psi))) {
                             LPWSTR path = nullptr;
                             if (SUCCEEDED(psi->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {

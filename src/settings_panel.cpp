@@ -387,31 +387,31 @@ void SettingsPanel::DrawPanel() {
     // bordered
     t->Clear(D2D1::ColorF(0, 0, 0, 0));
     D2D1_ROUNDED_RECT rr{{0, 0, W, H}, r, r};
-    t->FillRoundedRectangle(rr, m_brTint.p);
+    t->FillRoundedRectangle(rr, m_brTint.Get());
     D2D1_RECT_F hl{0, 0, W, 1.5f * s};
-    t->FillRectangle(hl, m_brHighlight.p);
-    t->DrawRoundedRectangle(rr, m_brBorder.p, 1.0f);
+    t->FillRectangle(hl, m_brHighlight.Get());
+    t->DrawRoundedRectangle(rr, m_brBorder.Get(), 1.0f);
 
     // Header
     drawStr(Loc(L"Appearance", L"外观设置"),
         RECT{ (LONG)(20 * s), 0, (LONG)(W - 40 * s), (LONG)(44 * s) },
-        m_fmtHeader.p, m_brText.p);
+        m_fmtHeader.Get(), m_brText.Get());
     if (m_hover == HIT_CLOSE)
-        fillRR(m_closeBtn, 6 * s, m_brHover.p);
-    drawStr(L"\u2715", m_closeBtn, m_fmtSymbol.p, m_brText2.p);
+        fillRR(m_closeBtn, 6 * s, m_brHover.Get());
+    drawStr(L"\u2715", m_closeBtn, m_fmtSymbol.Get(), m_brText2.Get());
 
     auto drawLabel = [&](const std::wstring& str, float y) {
-        t->DrawText(str.c_str(), (UINT32)str.size(), m_fmtLabel.p,
-            D2D1_RECT_F{20 * s, y, 220 * s, y + 18 * s}, m_brText2.p);
+        t->DrawText(str.c_str(), (UINT32)str.size(), m_fmtLabel.Get(),
+            D2D1_RECT_F{20 * s, y, 220 * s, y + 18 * s}, m_brText2.Get());
     };
     auto drawValueR = [&](const std::wstring& str, float y) {
-        t->DrawText(str.c_str(), (UINT32)str.size(), m_fmtValue.p,
-            D2D1_RECT_F{W - 100 * s, y, W - 20 * s, y + 18 * s}, m_brText.p);
+        t->DrawText(str.c_str(), (UINT32)str.size(), m_fmtValue.Get(),
+            D2D1_RECT_F{W - 100 * s, y, W - 20 * s, y + 18 * s}, m_brText.Get());
     };
 
     // ── Font list ──
     drawLabel(Loc(L"Font", L"字体"), m_fontLblY);
-    fillRR(m_fontList, 6 * s, m_brField.p);
+    fillRR(m_fontList, 6 * s, m_brField.Get());
     int total = (int)m_fonts.size();
     for (int row = 0; row < m_fontRows; row++) {
         int idx = m_fontScrollTop + row;
@@ -420,23 +420,23 @@ void SettingsPanel::DrawPanel() {
         RECT rowR{ m_fontList.left + 2, (LONG)ry, m_fontList.right - 2, (LONG)(ry + m_rowH) };
         bool sel = (idx == m_selFont);
         bool hov = (m_hover == HIT_FONT_LIST && m_hoverRow == row);
-        if (sel)      fillRR(rowR, 5 * s, m_brSel.p);
-        else if (hov) fillRR(rowR, 5 * s, m_brHover.p);
+        if (sel)      fillRR(rowR, 5 * s, m_brSel.Get());
+        else if (hov) fillRR(rowR, 5 * s, m_brHover.Get());
 
         // WYSIWYG: render each font name in its own face
-        CComPtr<IDWriteTextFormat> rf;
+        ComPtr<IDWriteTextFormat> rf;
         m_render->WriteFactory()->CreateTextFormat(m_fonts[idx].c_str(), nullptr,
             DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL,
             DWRITE_FONT_STRETCH_NORMAL, 13 * s, L"en-US", &rf);
         if (rf) {
             rf->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
             RECT tr{ rowR.left + 8, rowR.top, rowR.right - 8, rowR.bottom };
-            t->DrawText(m_fonts[idx].c_str(), (UINT32)m_fonts[idx].size(), rf.p,
-                RF(tr), sel ? m_brText.p : m_brText2.p, D2D1_DRAW_TEXT_OPTIONS_CLIP);
+            t->DrawText(m_fonts[idx].c_str(), (UINT32)m_fonts[idx].size(), rf.Get(),
+                RF(tr), sel ? m_brText.Get() : m_brText2.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
         }
     }
     // Scrollbar
-    fillRR(m_fontScroll, 3 * s, m_brField.p);
+    fillRR(m_fontScroll, 3 * s, m_brField.Get());
     if (total > m_fontRows) {
         float trackH = (float)(m_fontScroll.bottom - m_fontScroll.top);
         float thumbH = (std::max)(20 * s, trackH * m_fontRows / total);
@@ -444,7 +444,7 @@ void SettingsPanel::DrawPanel() {
         float pos = range > 0 ? (m_fontScrollTop / range) : 0.0f;
         float thumbTop = (float)m_fontScroll.top + pos * (trackH - thumbH);
         RECT thR{ m_fontScroll.left, (LONG)thumbTop, m_fontScroll.right, (LONG)(thumbTop + thumbH) };
-        fillRR(thR, 3 * s, m_brTrack.p);
+        fillRR(thR, 3 * s, m_brTrack.Get());
     }
 
     // ── Sliders ──
@@ -456,11 +456,11 @@ void SettingsPanel::DrawPanel() {
         float cy = (rc.top + rc.bottom) / 2.0f;
         float x0 = rc.left + 9 * s, x1 = rc.right - 9 * s;
         D2D1_RECT_F track{ x0, cy - 2 * s, x1, cy + 2 * s };
-        t->FillRoundedRectangle(D2D1_ROUNDED_RECT{track, 2 * s, 2 * s}, m_brField.p);
+        t->FillRoundedRectangle(D2D1_ROUNDED_RECT{track, 2 * s, 2 * s}, m_brField.Get());
         float fx = x0 + clampf(t01, 0, 1) * (x1 - x0);
         D2D1_RECT_F filled{ x0, cy - 2 * s, fx, cy + 2 * s };
-        t->FillRoundedRectangle(D2D1_ROUNDED_RECT{filled, 2 * s, 2 * s}, m_brAccent.p);
-        t->FillEllipse(D2D1_ELLIPSE{{fx, cy}, 9 * s, 9 * s}, m_brThumb.p);
+        t->FillRoundedRectangle(D2D1_ROUNDED_RECT{filled, 2 * s, 2 * s}, m_brAccent.Get());
+        t->FillEllipse(D2D1_ELLIPSE{{fx, cy}, 9 * s, 9 * s}, m_brThumb.Get());
     };
 
     drawLabel(Loc(L"Font Size", L"字体大小"), m_sizeLblY);
@@ -484,26 +484,26 @@ void SettingsPanel::DrawPanel() {
     auto drawSwatch = [&](const RECT& rc, ID2D1Brush* fill, bool selected, int hitId) {
         fillRR(rc, 6 * s, fill);
         if (m_hover == hitId)
-            t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(rc), 6 * s, 6 * s}, m_brHover.p, 2.0f);
+            t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(rc), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
         if (selected)
-            t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(rc), 6 * s, 6 * s}, m_brSwatchRing.p, 2.0f * s);
+            t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(rc), 6 * s, 6 * s}, m_brSwatchRing.Get(), 2.0f * s);
     };
 
     drawLabel(Loc(L"Panel Color", L"面板颜色"), m_panelLblY);
     for (int i = 0; i < 8; i++)
-        drawSwatch(m_panelSwatch[i], m_brPanelSw[i].p, i == panelSel, HIT_PANEL_SWATCH0 + i);
-    fillRR(m_panelMore, 6 * s, m_brField.p);
+        drawSwatch(m_panelSwatch[i], m_brPanelSw[i].Get(), i == panelSel, HIT_PANEL_SWATCH0 + i);
+    fillRR(m_panelMore, 6 * s, m_brField.Get());
     if (m_hover == HIT_PANEL_MORE)
-        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_panelMore), 6 * s, 6 * s}, m_brHover.p, 2.0f);
-    drawStr(L"\u2026", m_panelMore, m_fmtSymbol.p, m_brText2.p);
+        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_panelMore), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
+    drawStr(L"\u2026", m_panelMore, m_fmtSymbol.Get(), m_brText2.Get());
 
     drawLabel(Loc(L"Title Bar Color", L"标题栏颜色"), m_titleLblY);
     for (int i = 0; i < 8; i++)
-        drawSwatch(m_titleSwatch[i], m_brTitleSw[i].p, i == titleSel, HIT_TITLE_SWATCH0 + i);
-    fillRR(m_titleMore, 6 * s, m_brField.p);
+        drawSwatch(m_titleSwatch[i], m_brTitleSw[i].Get(), i == titleSel, HIT_TITLE_SWATCH0 + i);
+    fillRR(m_titleMore, 6 * s, m_brField.Get());
     if (m_hover == HIT_TITLE_MORE)
-        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_titleMore), 6 * s, 6 * s}, m_brHover.p, 2.0f);
-    drawStr(L"\u2026", m_titleMore, m_fmtSymbol.p, m_brText2.p);
+        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_titleMore), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
+    drawStr(L"\u2026", m_titleMore, m_fmtSymbol.Get(), m_brText2.Get());
 
     // ── Title name position (left / center / right) ──
     drawLabel(Loc(L"Title Position", L"标题位置"), m_titlePosLblY);
@@ -513,12 +513,12 @@ void SettingsPanel::DrawPanel() {
         };
         for (int i = 0; i < 3; i++) {
             bool active = (app.titleAlign == i);
-            fillRR(m_titlePosSeg[i], 6 * s, active ? m_brAccent.p : m_brField.p);
+            fillRR(m_titlePosSeg[i], 6 * s, active ? m_brAccent.Get() : m_brField.Get());
             if (!active && m_hover == HIT_TITLEPOS0 + i)
                 t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_titlePosSeg[i]), 6 * s, 6 * s},
-                    m_brHover.p, 2.0f);
-            drawStr(segLabels[i], m_titlePosSeg[i], m_fmtCenter.p,
-                active ? m_brThumb.p : m_brText2.p);
+                    m_brHover.Get(), 2.0f);
+            drawStr(segLabels[i], m_titlePosSeg[i], m_fmtCenter.Get(),
+                active ? m_brThumb.Get() : m_brText2.Get());
         }
     }
 
@@ -534,35 +534,35 @@ void SettingsPanel::DrawPanel() {
         int dm = m_fence->GetRender().Appearance().displayMode;
         for (int i = 0; i < 2; i++) {
             bool active = (dm == i);
-            fillRR(m_displayModeSeg[i], 6 * s, active ? m_brAccent.p : m_brField.p);
+            fillRR(m_displayModeSeg[i], 6 * s, active ? m_brAccent.Get() : m_brField.Get());
             if (!active && m_hover == HIT_DISPMODE0 + i)
                 t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_displayModeSeg[i]), 6 * s, 6 * s},
-                    m_brHover.p, 2.0f);
-            drawStr(dmLabels[i], m_displayModeSeg[i], m_fmtCenter.p,
-                active ? m_brThumb.p : m_brText2.p);
+                    m_brHover.Get(), 2.0f);
+            drawStr(dmLabels[i], m_displayModeSeg[i], m_fmtCenter.Get(),
+                active ? m_brThumb.Get() : m_brText2.Get());
         }
     }
 
     // ── Title bar height stepper ──
-    fillRR(m_thMinus, 6 * s, m_brField.p);
+    fillRR(m_thMinus, 6 * s, m_brField.Get());
     if (m_hover == HIT_TITLEH_MINUS)
-        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_thMinus), 6 * s, 6 * s}, m_brHover.p, 2.0f);
-    drawStr(L"\u2212", m_thMinus, m_fmtSymbol.p, m_brText.p);
-    fillRR(m_thPlus, 6 * s, m_brField.p);
+        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_thMinus), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
+    drawStr(L"\u2212", m_thMinus, m_fmtSymbol.Get(), m_brText.Get());
+    fillRR(m_thPlus, 6 * s, m_brField.Get());
     if (m_hover == HIT_TITLEH_PLUS)
-        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_thPlus), 6 * s, 6 * s}, m_brHover.p, 2.0f);
-    drawStr(L"+", m_thPlus, m_fmtSymbol.p, m_brText.p);
+        t->DrawRoundedRectangle(D2D1_ROUNDED_RECT{RF(m_thPlus), 6 * s, 6 * s}, m_brHover.Get(), 2.0f);
+    drawStr(L"+", m_thPlus, m_fmtSymbol.Get(), m_brText.Get());
     int thVal = (int)(app.titleH / s + 0.5f);
     RECT valR{ m_thMinus.right, m_thMinus.top, m_thPlus.left, m_thMinus.bottom };
-    drawStr(std::to_wstring(thVal), valR, m_fmtCenter.p, m_brText.p);
+    drawStr(std::to_wstring(thVal), valR, m_fmtCenter.Get(), m_brText.Get());
 
     // ── Separator + delete ──
     D2D1_RECT_F sep{20 * s, m_sepY, W - 20 * s, m_sepY + 1 * s};
-    t->FillRectangle(sep, m_brBorder.p);
-    fillRR(m_deleteBtn, 8 * s, m_brDanger.p);
+    t->FillRectangle(sep, m_brBorder.Get());
+    fillRR(m_deleteBtn, 8 * s, m_brDanger.Get());
     if (m_hover == HIT_DELETE_FENCE)
-        fillRR(m_deleteBtn, 8 * s, m_brHover.p);
-    drawStr(Loc(L"Delete Fence", L"删除围栏"), m_deleteBtn, m_fmtCenter.p, m_brThumb.p);
+        fillRR(m_deleteBtn, 8 * s, m_brHover.Get());
+    drawStr(Loc(L"Delete Fence", L"删除围栏"), m_deleteBtn, m_fmtCenter.Get(), m_brThumb.Get());
 
     m_render->EndDraw();
 }

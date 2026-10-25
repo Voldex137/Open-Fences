@@ -5,7 +5,7 @@
 #include <d2d1.h>
 #include <wincodec.h>
 #include <dwrite.h>
-#include <atlbase.h>
+#include "com_ptr.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -136,10 +136,10 @@ public:
     FenceAppearance& Appearance() { return m_app; }
 
     // Raw access for custom drawing (the settings panel paints its own UI).
-    ID2D1RenderTarget* Target() const { return m_d2dTarget.p; }
-    IDWriteFactory* WriteFactory() const { return m_dwFactory.p; }
-    bool HasBackdrop() const { return m_backdropBrush.p != nullptr; }
-    ID2D1BitmapBrush* BackdropBrush() const { return m_backdropBrush.p; }
+    ID2D1RenderTarget* Target() const { return m_d2dTarget.Get(); }
+    IDWriteFactory* WriteFactory() const { return m_dwFactory.Get(); }
+    bool HasBackdrop() const { return m_backdropBrush.Get() != nullptr; }
+    ID2D1BitmapBrush* BackdropBrush() const { return m_backdropBrush.Get(); }
 
 private:
     bool CreateBrushes();
@@ -154,43 +154,43 @@ private:
     // has nothing usable for the index. When cropPadded is set the glyph is
     // cropped to its opaque bounds if the entry pads small artwork inside a
     // much larger canvas (seen in the jumbo list for a few file types).
-    CComPtr<ID2D1Bitmap> TryLoadIcon(int iconIndex, int imgList, bool cropPadded);
+    ComPtr<ID2D1Bitmap> TryLoadIcon(int iconIndex, int imgList, bool cropPadded);
     // Wrap premultiplied BGRA pixels (96 DPI) into a D2D bitmap.
-    CComPtr<ID2D1Bitmap> MakeBitmapFromPixels(const BYTE* bgra, int w, int h);
+    ComPtr<ID2D1Bitmap> MakeBitmapFromPixels(const BYTE* bgra, int w, int h);
 
     float m_dpiX = 96.0f;
     float m_dpiY = 96.0f;
 
-    CComPtr<ID2D1Factory>      m_d2dFactory;
-    CComPtr<IWICImagingFactory> m_wicFactory;
-    CComPtr<IDWriteFactory>     m_dwFactory;
-    CComPtr<IWICBitmap>         m_wicBitmap;
-    CComPtr<ID2D1RenderTarget>  m_d2dTarget;
-    CComPtr<ID2D1SolidColorBrush> m_bgBrush, m_titleBrush, m_sepBrush;
+    ComPtr<ID2D1Factory>      m_d2dFactory;
+    ComPtr<IWICImagingFactory> m_wicFactory;
+    ComPtr<IDWriteFactory>     m_dwFactory;
+    ComPtr<IWICBitmap>         m_wicBitmap;
+    ComPtr<ID2D1RenderTarget>  m_d2dTarget;
+    ComPtr<ID2D1SolidColorBrush> m_bgBrush, m_titleBrush, m_sepBrush;
     // Border: vertical gradient (brighter top edge reads as key light,
     // dimmer bottom) instead of a uniform 1px ring.
-    CComPtr<ID2D1LinearGradientBrush> m_borderGradBrush;
+    ComPtr<ID2D1LinearGradientBrush> m_borderGradBrush;
     // Cached top-edge highlight strip (was a per-frame brush allocation in
     // DrawFence — redraws run at drag frequency).
-    CComPtr<ID2D1SolidColorBrush> m_topHiBrush;
-    CComPtr<ID2D1SolidColorBrush> m_textBrush, m_iconTextBrush, m_accentBrush;
+    ComPtr<ID2D1SolidColorBrush> m_topHiBrush;
+    ComPtr<ID2D1SolidColorBrush> m_textBrush, m_iconTextBrush, m_accentBrush;
     // Rubber-band marquee (accent color, light fill / stronger edge). Cached
     // because a live band repaints on every mouse move — no per-frame brushes.
-    CComPtr<ID2D1SolidColorBrush> m_marqueeFillBrush, m_marqueeEdgeBrush;
-    CComPtr<IDWriteTextFormat>  m_titleFormat, m_iconFormat, m_listFormat;
-    CComPtr<ID2D1StrokeStyle>   m_chevronStroke;   // round caps/joins for the collapse arrow
+    ComPtr<ID2D1SolidColorBrush> m_marqueeFillBrush, m_marqueeEdgeBrush;
+    ComPtr<IDWriteTextFormat>  m_titleFormat, m_iconFormat, m_listFormat;
+    ComPtr<ID2D1StrokeStyle>   m_chevronStroke;   // round caps/joins for the collapse arrow
     // Collapse arrow: ONE open path (its apex is a true round join — two
     // separate lines would double a round cap there and bulge). Points up;
     // DrawFence flips it for the collapsed state. Rebuilt with the styles
     // because its geometry follows the title-bar height.
-    CComPtr<ID2D1PathGeometry>  m_chevronPath;
+    ComPtr<ID2D1PathGeometry>  m_chevronPath;
     // Title bar fill + top highlight strip as cached paths carrying the
     // window's top corner arcs — a flat rect would paint square corners over
     // the rounded body shape. Rebuilt with the styles and on Resize.
-    CComPtr<ID2D1PathGeometry>  m_titleBarPath;
-    CComPtr<ID2D1PathGeometry>  m_topHiPath;
-    CComPtr<ID2D1SolidColorBrush> m_chevronBrush;  // dim idle, brightens on hover
-    CComPtr<ID2D1SolidColorBrush> m_chevronPlate;  // caption-button hover/press plate
+    ComPtr<ID2D1PathGeometry>  m_titleBarPath;
+    ComPtr<ID2D1PathGeometry>  m_topHiPath;
+    ComPtr<ID2D1SolidColorBrush> m_chevronBrush;  // dim idle, brightens on hover
+    ComPtr<ID2D1SolidColorBrush> m_chevronPlate;  // caption-button hover/press plate
 
     HDC     m_memDC   = nullptr;
     HBITMAP m_dib     = nullptr;
@@ -198,11 +198,11 @@ private:
     UINT    m_width   = 0, m_height = 0;
     FenceAppearance m_app;
 
-    std::unordered_map<std::wstring, CComPtr<ID2D1Bitmap>> m_iconCache;
+    std::unordered_map<std::wstring, ComPtr<ID2D1Bitmap>> m_iconCache;
 
     // Frosted-glass backdrop: blurred snapshot of the desktop behind the fence
-    CComPtr<ID2D1Bitmap>      m_backdropBmp;
-    CComPtr<ID2D1BitmapBrush> m_backdropBrush;
+    ComPtr<ID2D1Bitmap>      m_backdropBmp;
+    ComPtr<ID2D1BitmapBrush> m_backdropBrush;
 
     // Measured size of the selected icon's label, cached so the accent label
     // box does not re-run IDWriteTextLayout on every frame (redraws fire at

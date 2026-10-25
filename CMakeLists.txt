@@ -52,25 +52,29 @@ target_link_libraries(openfences PRIVATE
 
 set_target_properties(openfences PROPERTIES WIN32_EXECUTABLE TRUE)
 
-add_executable(diag desktop_diag.cpp)
-target_link_libraries(diag PRIVATE user32 comctl32)
+# Research spikes and diagnostics (see tools/README.md). Not built by default.
+option(OPENFENCES_BUILD_TOOLS "Build the diagnostic and spike tools in tools/" OFF)
+if(OPENFENCES_BUILD_TOOLS)
+    add_executable(diag tools/desktop_diag.cpp)
+    target_link_libraries(diag PRIVATE user32 comctl32)
 
-add_executable(icon_diag icon_diag.cpp src/icon_extract.cpp)
-target_link_libraries(icon_diag PRIVATE user32 shell32 shlwapi ole32 uuid comctl32)
+    add_executable(icon_diag tools/icon_diag.cpp src/icon_extract.cpp)
+    target_link_libraries(icon_diag PRIVATE user32 shell32 shlwapi ole32 uuid comctl32)
 
-add_executable(region_spike region_spike.cpp)
-target_link_libraries(region_spike PRIVATE user32)
-# Layered CHILD windows (the fence analogue probed here) only exist on Win8+;
-# without the supportedOS manifest CreateWindowExW(WS_EX_LAYERED, WS_CHILD) fails.
-target_link_options(region_spike PRIVATE
-    "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
+    add_executable(region_spike tools/region_spike.cpp)
+    target_link_libraries(region_spike PRIVATE user32)
+    # Layered CHILD windows (the fence analogue probed here) only exist on Win8+;
+    # without the supportedOS manifest CreateWindowExW(WS_EX_LAYERED, WS_CHILD) fails.
+    target_link_options(region_spike PRIVATE
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
 
-add_executable(ctxmenu_spike ctxmenu_spike.cpp)
-target_link_libraries(ctxmenu_spike PRIVATE user32 shell32 shlwapi ole32 uuid)
-# Same supportedOS manifest as the app: without it the process is shimmed to
-# pre-Windows-8 and the shell hides IExplorerCommandProvider (a Win8+ interface).
-target_link_options(ctxmenu_spike PRIVATE
-    "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
+    add_executable(ctxmenu_spike tools/ctxmenu_spike.cpp)
+    target_link_libraries(ctxmenu_spike PRIVATE user32 shell32 shlwapi ole32 uuid)
+    # Same supportedOS manifest as the app: without it the process is shimmed to
+    # pre-Windows-8 and the shell hides IExplorerCommandProvider (a Win8+ interface).
+    target_link_options(ctxmenu_spike PRIVATE
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/app.manifest")
 
-add_executable(vis_probe vis_probe.cpp)
-target_link_libraries(vis_probe PRIVATE user32 shell32 advapi32)
+    add_executable(vis_probe tools/vis_probe.cpp)
+    target_link_libraries(vis_probe PRIVATE user32 shell32 advapi32)
+endif()
