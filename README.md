@@ -60,16 +60,17 @@ openFences/
 ├── app/                       # the application
 │   ├── include/               # headers, mirrored by the folders under src/
 │   ├── src/
-│   │   ├── main.cpp           # entry point, tray, desktop management
-│   │   ├── fence/             # the fence window: layout, mouse, keyboard, menus, sorting, mapped folders
-│   │   ├── render/            # Direct2D rendering, icon extraction, menu glyphs
+│   │   ├── main.cpp           # entry point, owner window (timers, hotkey)
+│   │   ├── fence/             # the fence window and the list of fences: layout, mouse, keyboard, menus, sorting, mapped folders
+│   │   ├── render/            # Direct2D rendering, backdrop filters, icon extraction, menu glyphs
 │   │   ├── menu/              # Windows 11 style context menu, Explorer shell menus
 │   │   ├── settings/          # appearance settings panel
-│   │   ├── shell/             # desktop host / DPI, Explorer sort order
+│   │   ├── shell/             # desktop host / DPI, desktop icon list, Explorer sort order
+│   │   ├── tray/              # notification-area icon and menu
 │   │   └── core/              # config.json, localization, COM pointer helper, resource ids
 │   └── resources/             # app.ico, lang/*.json (one file per UI language)
 ├── tools/                     # research spikes and diagnostics (off by default)
-├── tests/                     # unit tests (localization, icon grid, icon sorting)
+├── tests/                     # unit tests (localization, icon grid, icon sorting, image filters, list scrollbar)
 ├── experiments/legacy-hook/   # unused DLL from an early design
 ├── docs/                      # design notes, LOCALIZATION.md, BUGS.md
 ├── CLAUDE.md                  # development guide for AI assistants

@@ -13,26 +13,32 @@ An open-source alternative to Stardock Fences: a Windows desktop icon grouping t
 
 ## Source files (`app/src/<folder>/`, headers in `app/include/<folder>/`)
 
+Includes carry the folder: `#include "fence/fence_window.h"`.
+
 | Folder | Files | Responsibility |
 |--------|-------|----------------|
-| `src/` | `main.cpp` | Entry point, tray menu, desktop icon management, hide/show scheduling |
-| `fence/` | `fence_window.cpp` | Window lifecycle, drawing glue, `WndProc` dispatcher |
-| | `fence_mouse.cpp`, `fence_keyboard.cpp` | Mouse (drag, resize, marquee, wheel) and keyboard/timer handlers |
+| `src/` | `main.cpp` | Entry point, owner window (timers, hotkey, explorer restart) |
+| `fence/` | `fence_manager.cpp` | The list of fences: create, remove, rebuild after an explorer restart, hide-all |
+| | `fence_window.cpp` | Window lifecycle, drawing glue, `WndProc` dispatcher |
+| | `fence_mouse.cpp`, `fence_keyboard.cpp` | Mouse (press, drag, resize, marquee, wheel) and keyboard/timer handlers |
 | | `fence_menu.cpp` | Fence and icon context menus, "Map Folder", shell "New" items |
 | | `fence_layout.cpp`, `icon_grid.cpp` | Grid/list layout; pure cell geometry (tested) |
 | | `fence_selection.cpp`, `fence_rename.cpp` | Selection and marquee; in-place rename of the fence and of icons |
-| | `fence_sort_filter.cpp`, `icon_sort.cpp` | Sort state, search filter; icon ordering (tested) |
+| | `fence_sort_filter.cpp`, `icon_sort.cpp` | Sort state and search filter; icon ordering (tested) |
 | | `fence_source_folder.cpp` | Folder-backed fences: enumeration and change watching |
 | | `fence_drop_target.cpp` | OLE drop target (files and shell objects) |
-| `render/` | `render.cpp` | Direct2D pipeline: frosted glass (Acrylic), border, text, icons |
+| `render/` | `render.cpp` + `render_styles/_icons/_backdrop/_surface.cpp` | `RenderContext`: brushes and fonts, icon cache, frosted-glass backdrop, DIB/present |
+| | `render_draw.cpp` | One frame: title bar, search box, icon grid/list, scrollbar, marquee |
+| | `image_filters.cpp`, `list_scrollbar.cpp` | Pure pixel filters (blur, saturation, noise) and scrollbar geometry (tested) |
 | | `icon_extract.cpp`, `menu_icons.cpp` | Icon pixel extraction; programmatic menu glyphs |
-| `menu/` | `context_menu.cpp` | Windows 11 style Fluent custom-drawn menu + low-level hook for dismissal |
+| `menu/` | `context_menu.cpp` | `FluentMenu::Run` and the menu session (nested message loop) |
+| | `menu_model.cpp`, `menu_popup*.cpp`, `menu_hook.cpp` | HMENU model; popup windows (create/layout, draw, input); dismissal mouse hook |
 | | `shell_context_menu.cpp` | Explorer's file menu and the shell "New" submenu |
-| `settings/` | `settings_panel.cpp` | Appearance panel (colours, alignment, font size, display mode, ...) |
-| `shell/` | `desktop_host.cpp`, `explorer_sort.cpp` | Desktop window host and DPI; Explorer's sort order of a folder |
+| `settings/` | `settings_panel*.cpp` | Appearance panel: lifecycle, style, layout, drawing, input |
+| `shell/` | `desktop_host.cpp`, `desktop_icons.cpp` | Desktop window host, DPI; hiding the icon list while keeping fences |
+| | `explorer_sort.cpp` | Explorer's sort order of a folder |
+| `tray/` | `tray.cpp` | Notification icon and its menu |
 | `core/` | `config.cpp`, `localization.cpp` | `config.json` persistence, autostart; key-based localization (`L10n::Tr`) |
-
-Includes are written with the folder: `#include "fence/fence_window.h"`.
 
 ## Build and run
 

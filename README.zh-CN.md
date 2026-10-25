@@ -60,16 +60,17 @@ openFences/
 ├── app/                       # 应用程序
 │   ├── include/               # 头文件，目录结构与 src/ 对应
 │   ├── src/
-│   │   ├── main.cpp           # 入口、托盘、桌面管理
-│   │   ├── fence/             # 围栏窗口：布局、鼠标、键盘、菜单、排序、映射文件夹
-│   │   ├── render/            # Direct2D 渲染、图标提取、菜单图标
+│   │   ├── main.cpp           # 入口、所有者窗口（定时器、热键）
+│   │   ├── fence/             # 围栏窗口与围栏列表：布局、鼠标、键盘、菜单、排序、映射文件夹
+│   │   ├── render/            # Direct2D 渲染、背景滤镜、图标提取、菜单图标
 │   │   ├── menu/              # Win11 风格右键菜单、Explorer 外壳菜单
 │   │   ├── settings/          # 外观设置面板
-│   │   ├── shell/             # 桌面宿主 / DPI、Explorer 排序方式
+│   │   ├── shell/             # 桌面宿主 / DPI、桌面图标列表、Explorer 排序方式
+│   │   ├── tray/              # 通知区域图标及菜单
 │   │   └── core/              # config.json、本地化、COM 指针辅助、资源 ID
 │   └── resources/             # app.ico、lang/*.json（每种界面语言一个文件）
 ├── tools/                     # 研究性试验与诊断程序（默认不构建）
-├── tests/                     # 单元测试（本地化、图标网格、图标排序）
+├── tests/                     # 单元测试（本地化、图标网格、图标排序、图像滤镜、列表滚动条）
 ├── experiments/legacy-hook/   # 早期设计遗留、未使用的 DLL
 ├── docs/                      # 设计笔记、LOCALIZATION.md、BUGS.md
 ├── CLAUDE.md                  # 开发指引（供 AI 辅助）
