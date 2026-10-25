@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include "icon_entry.h"
 
 // Simple COM/OLE init RAII. OleInitialize is required for RegisterDragDrop
 // and other OLE features (drag-and-drop, clipboard); it internally calls
@@ -57,17 +58,6 @@ struct FenceAppearance {
     float cellW      = 96.0f;   // icon cell width
     float cellH      = 74.0f;   // icon cell height
     float imgSize    = 48.0f;   // drawn glyph size (design fallback)
-};
-
-struct IconEntry {
-    std::wstring name;
-    std::wstring path;  // full file path for icon extraction
-    std::wstring ext;   // extension incl. '.' (PathFindExtensionW), for Type sort
-    ULONGLONG size = 0;
-    FILETIME lastWrite = {};
-    bool isDir = false;
-    float x = 0.0f;     // cell top-left inside the fence client area; icons
-    float y = 0.0f;     // rest on the icon grid (snapped on drop/release)
 };
 
 struct FenceViewState {

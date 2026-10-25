@@ -41,6 +41,8 @@ add_executable(openfences
     app/src/main.cpp
     app/src/fence_window.cpp
     app/src/fence_layout.cpp
+    app/src/icon_grid.cpp
+    app/src/icon_sort.cpp
     app/src/fence_selection.cpp
     app/src/fence_sort_filter.cpp
     app/src/fence_source_folder.cpp
@@ -120,4 +122,13 @@ if(OPENFENCES_BUILD_TESTS)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "${CMAKE_CURRENT_SOURCE_DIR}/app/resources/lang" "$<TARGET_FILE_DIR:l10n_test>/lang")
     add_test(NAME l10n COMMAND l10n_test)
+
+    add_executable(icon_grid_test tests/icon_grid_test.cpp app/src/icon_grid.cpp)
+    target_include_directories(icon_grid_test PRIVATE app/include tests)
+    add_test(NAME icon_grid COMMAND icon_grid_test)
+
+    add_executable(icon_sort_test tests/icon_sort_test.cpp app/src/icon_sort.cpp)
+    target_include_directories(icon_sort_test PRIVATE app/include tests)
+    target_link_libraries(icon_sort_test PRIVATE shlwapi)
+    add_test(NAME icon_sort COMMAND icon_sort_test)
 endif()

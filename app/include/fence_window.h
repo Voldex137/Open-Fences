@@ -7,6 +7,7 @@
 #include <memory>
 #include <algorithm>
 #include "render.h"
+#include "icon_grid.h"
 
 struct IContextMenu;
 
@@ -157,7 +158,7 @@ private:
     // The fence body is tiled with cellW×cellH cells; icons always rest on a
     // cell. Placement is free (any cell), but positions snap on release and
     // cells never hold two icons — same rules as the Windows desktop.
-    struct IconGrid { int cols, rows; float x0, y0, cw, ch; };
+    using IconGrid = ::IconGrid;
     IconGrid GetIconGrid() const;                 // grid metrics for this fence
     int  CellOf(const IconEntry& e) const;        // nearest cell index (r*cols+c)
     void PlaceIconAt(IconEntry& e, int cell) const;   // seat on the cell top-left
