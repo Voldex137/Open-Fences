@@ -10,6 +10,7 @@
   "tray.start_with_windows": "开机自启动",
   "tray.config_location": "配置文件位置",
   "tray.create_shortcut": "创建桌面快捷方式",
+  "tray.storage_folder": "存放文件夹...",
   "tray.exit": "退出",
 
   "fence.new_title": "新建围栏",

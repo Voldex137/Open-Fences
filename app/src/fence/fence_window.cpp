@@ -4,6 +4,7 @@
 #include "menu/shell_context_menu.h"
 #include "settings/settings_panel.h"
 #include "core/config.h"
+#include "core/storage.h"
 #include <shellapi.h>
 #include <shobjidl.h>   // IContextMenu
 #include <shlwapi.h>
@@ -108,6 +109,20 @@ void FenceWindow::Redraw() {
 void FenceWindow::SetIcons(const std::vector<IconEntry>& entries) {
     m_icons = entries;
     Redraw();
+}
+
+void FenceWindow::AddDroppedItem(const std::wstring& name, const std::wstring& path,
+                                 float atX, float atY) {
+    std::wstring stored = IsMapped() ? std::wstring() : Storage::AdoptFromDesktop(path);
+    AddIcon(name, stored.empty() ? path : stored, atX, atY);
+}
+
+void FenceWindow::ReturnStoredItemsToDesktop() {
+    for (auto& icon : m_icons) {
+        if (!Storage::IsStored(icon.path)) continue;
+        std::wstring back = Storage::ReturnToDesktop(icon.path);
+        if (!back.empty()) icon.path = back;
+    }
 }
 
 void FenceWindow::AddIcon(const std::wstring& name, const std::wstring& path,
@@ -328,7 +343,7 @@ LRESULT FenceWindow::OnDropFiles(UINT msg, WPARAM wp, LPARAM lp)     {
             wcscpy_s(display, PathFindFileNameW(path));
             PathRemoveExtensionW(display);
             if (display[0])
-                AddIcon(display, path, dx, dy);
+                AddDroppedItem(display, path, dx, dy);
         }
     }
     DragFinish(hdrop);

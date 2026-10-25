@@ -107,7 +107,7 @@ public:
             }
             if (displayName.empty()) displayName = parsePath;
 
-            self->AddIcon(displayName, parsePath, dx, dy);
+            self->AddDroppedItem(displayName, parsePath, dx, dy);
         }
 
         *pdwEffect = DROPEFFECT_MOVE;

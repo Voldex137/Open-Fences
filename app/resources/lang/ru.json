@@ -10,6 +10,7 @@
   "tray.start_with_windows": "Запускать вместе с Windows",
   "tray.config_location": "Расположение файла настроек",
   "tray.create_shortcut": "Создать ярлык на рабочем столе",
+  "tray.storage_folder": "Папка для файлов...",
   "tray.exit": "Выход",
 
   "fence.new_title": "Новое ограждение",

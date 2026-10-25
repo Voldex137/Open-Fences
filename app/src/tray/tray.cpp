@@ -2,6 +2,8 @@
 #include "core/config.h"
 #include "core/localization.h"
 #include "core/resource.h"
+#include "core/storage.h"
+#include "core/com_ptr.h"
 #include "fence/fence_manager.h"
 #include "menu/context_menu.h"
 #include "render/menu_icons.h"
@@ -10,6 +12,7 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <shlguid.h>
+#include <shobjidl.h>
 #include <string>
 
 namespace Tray {
@@ -24,8 +27,12 @@ enum TrayCmd : int {
     kCmdAutoStart         = 112,
     kCmdConfigLocation    = 113,
     kCmdCreateShortcut    = 114,
+    kCmdStorageFolder     = 115,
     kCmdLanguageBase      = 200,   // one command per loaded language
 };
+
+// The Language submenu is the fifth item (after New fence, hide-all, icons and a separator).
+constexpr UINT kLanguageMenuPosition = 4;
 
 void CreateDesktopShortcut() {
     wchar_t desktop[MAX_PATH];
@@ -47,6 +54,28 @@ void CreateDesktopShortcut() {
         pf->Release();
     }
     sl->Release();
+}
+
+// "Storage Folder...": pick where files dropped from the desktop are kept.
+void ChooseStorageFolder(HWND owner) {
+    ComPtr<IFileOpenDialog> dialog;
+    if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(&dialog))))
+        return;
+    dialog->SetOptions(FOS_PICKFOLDERS | FOS_PATHMUSTEXIST | FOS_NOCHANGEDIR | FOS_FORCEFILESYSTEM);
+    // Start in the current storage folder when it exists.
+    ComPtr<IShellItem> start;
+    if (SUCCEEDED(SHCreateItemFromParsingName(Storage::Folder().c_str(), nullptr, IID_PPV_ARGS(&start))))
+        dialog->SetFolder(start.Get());
+    if (FAILED(dialog->Show(owner))) return;
+    ComPtr<IShellItem> picked;
+    if (FAILED(dialog->GetResult(&picked))) return;
+    LPWSTR path = nullptr;
+    if (SUCCEEDED(picked->GetDisplayName(SIGDN_FILESYSPATH, &path)) && path) {
+        Storage::SetFolder(path);
+        Config::MarkDirty();
+    }
+    CoTaskMemFree(path);
 }
 
 HMENU BuildMenu() {
@@ -72,33 +101,34 @@ HMENU BuildMenu() {
     AppendMenuW(menu, MF_STRING | (Config::AutoStartEnabled() ? MF_CHECKED : 0),
         kCmdAutoStart, L10n::Tr("tray.start_with_windows"));
     AppendMenuW(menu, MF_STRING, kCmdConfigLocation, L10n::Tr("tray.config_location"));
+    AppendMenuW(menu, MF_STRING, kCmdStorageFolder, L10n::Tr("tray.storage_folder"));
     AppendMenuW(menu, MF_STRING, kCmdCreateShortcut, L10n::Tr("tray.create_shortcut"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kCmdExit, L10n::Tr("tray.exit"));
     return menu;
 }
 
-// Fluent glyph icons, by menu position (0 New Fence, 1 Hide/Show All Fences,
-// 2 Hide/Show Desktop Icons, 3 separator, 4 Language, 5 Start with Windows,
-// 6 Config File Location, 7 separator, 8 Exit). The set owns the HBITMAPs
-// until the menu interaction has fully returned (MIIM_BITMAP is by reference).
+// Fluent glyph icons. The set owns the HBITMAPs until the menu interaction has
+// fully returned (MIIM_BITMAP is by reference). Items are addressed by command id;
+// the Language submenu has none and is addressed by position.
 void AttachGlyphs(HMENU menu, GlyphBitmapSet& glyphs) {
     int size = MenuGlyphSizePx();
-    auto icon = [&](UINT pos, MenuGlyph g) {
+    auto icon = [&](UINT item, bool byPosition, MenuGlyph g) {
         HBITMAP b = glyphs.add(g, size);
         if (!b) return;
         MENUITEMINFOW mii = { sizeof(mii) };
         mii.fMask = MIIM_BITMAP;
         mii.hbmpItem = b;
-        SetMenuItemInfoW(menu, pos, TRUE, &mii);
+        SetMenuItemInfoW(menu, item, byPosition ? TRUE : FALSE, &mii);
     };
-    icon(0, MenuGlyph::Plus);
-    icon(1, FenceManager::AllHidden() ? MenuGlyph::Eye : MenuGlyph::EyeOff);
-    icon(2, MenuGlyph::Grid);
-    icon(4, MenuGlyph::Globe);
-    icon(5, MenuGlyph::Rocket);
-    icon(6, MenuGlyph::Folder);
-    icon(8, MenuGlyph::Power);
+    icon(kCmdNewFence, false, MenuGlyph::Plus);
+    icon(kCmdToggleFences, false, FenceManager::AllHidden() ? MenuGlyph::Eye : MenuGlyph::EyeOff);
+    icon(kCmdToggleIcons, false, MenuGlyph::Grid);
+    icon(kLanguageMenuPosition, true, MenuGlyph::Globe);
+    icon(kCmdAutoStart, false, MenuGlyph::Rocket);
+    icon(kCmdConfigLocation, false, MenuGlyph::Folder);
+    icon(kCmdStorageFolder, false, MenuGlyph::Folder);
+    icon(kCmdExit, false, MenuGlyph::Power);
 }
 
 void Execute(HWND owner, int cmd) {
@@ -117,6 +147,8 @@ void Execute(HWND owner, int cmd) {
         Config::SetAutoStart(!Config::AutoStartEnabled());
     } else if (cmd == kCmdConfigLocation) {
         Config::RevealFile();
+    } else if (cmd == kCmdStorageFolder) {
+        ChooseStorageFolder(owner);
     } else if (cmd == kCmdCreateShortcut) {
         CreateDesktopShortcut();
     } else if (cmd == kCmdExit) {

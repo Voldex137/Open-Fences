@@ -4,6 +4,7 @@
 #include "menu/context_menu.h"
 #include "render/menu_icons.h"
 #include "core/config.h"
+#include "core/storage.h"
 #include "menu/shell_context_menu.h"
 #include <windowsx.h>
 #include <shlobj.h>
@@ -57,6 +58,8 @@ void FenceWindow::RemoveIconAt(int idx) {
     if (idx < 0 || idx >= (int)m_icons.size()) return;
     // Drop the removed path from the selection set so no entry
     // dangles pointing at a dead icon.
+    // A file that was moved into the storage folder goes back to the desktop.
+    if (Storage::IsStored(m_icons[idx].path)) Storage::ReturnToDesktop(m_icons[idx].path);
     auto& sel = m_selectedPaths;
     sel.erase(std::remove(sel.begin(), sel.end(), m_icons[idx].path), sel.end());
     m_icons.erase(m_icons.begin() + idx);

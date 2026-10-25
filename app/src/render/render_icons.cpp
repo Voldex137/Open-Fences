@@ -83,6 +83,14 @@ ID2D1Bitmap* RenderContext::LoadFileIcon(const std::wstring& filePath) {
     } else {
         gotIcon = SHGetFileInfoW(filePath.c_str(), 0, &shfi, sizeof(shfi),
                                  SHGFI_SYSICONINDEX) && shfi.iIcon != -1;
+        if (!gotIcon) {
+            // The file is gone (deleted or moved): fall back to the generic icon
+            // of its type, derived from the name alone, so the icon does not vanish.
+            DWORD attrs = filePath.find_last_of(L'.') == std::wstring::npos
+                              ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
+            gotIcon = SHGetFileInfoW(filePath.c_str(), attrs, &shfi, sizeof(shfi),
+                                     SHGFI_SYSICONINDEX | SHGFI_USEFILEATTRIBUTES) && shfi.iIcon != -1;
+        }
     }
     if (gotIcon) {
         // Pick the smallest image list whose canvas still covers the glyph

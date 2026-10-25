@@ -38,6 +38,12 @@ public:
     // atX/atY = desired cell *center* (drop point); the icon snaps to the
     // nearest free cell of the icon grid
     void AddIcon(const std::wstring& name, const std::wstring& path, float atX, float atY);
+    // A file dropped from outside: desktop items are moved into the storage folder
+    // (see core/storage.h) instead of being duplicated, then added like AddIcon.
+    void AddDroppedItem(const std::wstring& name, const std::wstring& path, float atX, float atY);
+    // Moves every icon whose file lives in the storage folder back to the desktop
+    // (called when the fence is deleted).
+    void ReturnStoredItemsToDesktop();
     /// Re-snap every icon onto the icon grid and resolve overlaps. Call after
     /// anything that moves the grid (resize, title-bar height change).
     void RelayoutIcons();

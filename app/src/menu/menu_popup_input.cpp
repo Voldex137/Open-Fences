@@ -92,9 +92,11 @@ void MenuPopup::OnMouse(int mx, int my) {
     int idx = HitTest(mx, my);
     SetHover(idx);
 
-    // Moving off the row that owns an open flyout closes that flyout — except
-    // while the button is held: drag-select stays on this level.
-    if (!pressed && (int)sess->popups.size() > depth + 1 &&
+    // Hovering a DIFFERENT row closes the flyout of the row that owns it, except
+    // while the button is held (drag-select stays on this level). Hover over the
+    // padding strip or a separator (idx < 0) must not close it: the flyout hugs
+    // the parent's right edge, so every move toward it crosses that strip.
+    if (!pressed && idx >= 0 && (int)sess->popups.size() > depth + 1 &&
         sess->popups[depth + 1]->parentItem != idx) {
         sess->CloseDeeperThan(depth);
     }

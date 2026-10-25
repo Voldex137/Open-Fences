@@ -46,6 +46,7 @@ void Remove(HWND hwnd) {
     auto it = std::find_if(g_fences.begin(), g_fences.end(),
                            [hwnd](const auto& f) { return f->Hwnd() == hwnd; });
     if (it == g_fences.end()) return;
+    (*it)->ReturnStoredItemsToDesktop();   // the fence is going away; its files return to the desktop
     g_fences.erase(it);
     Config::MarkDirty();
 }

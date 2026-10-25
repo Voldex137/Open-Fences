@@ -78,6 +78,7 @@ add_executable(openfences
     app/src/render/icon_extract.cpp
     app/src/render/menu_icons.cpp
     app/src/core/config.cpp
+    app/src/core/storage.cpp
     app/src/core/localization.cpp
     app/src/shell/explorer_sort.cpp
     app/src/app.rc

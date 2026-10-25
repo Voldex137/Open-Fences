@@ -2,6 +2,7 @@
 #include "fence/fence_window.h"
 #include "fence/fence_manager.h"
 #include "core/localization.h"
+#include "core/storage.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)
@@ -158,6 +159,7 @@ bool SaveNow() {
     json j;
     j["version"]  = 1;
     j["language"] = ToUtf8(L10n::CurrentCode());
+    j["storageFolder"] = ToUtf8(Storage::Folder());
     j["hideAll"]  = FenceManager::AllHidden();
     json fences = json::array();
     for (const auto& f : FenceManager::All())
@@ -230,6 +232,8 @@ bool LoadApp() {
 
     // An empty array is a legitimate state (the user deleted every fence) —
     // only a MISSING file triggers the defaults, so honor it.
+    if (j.contains("storageFolder") && j["storageFolder"].is_string())
+        Storage::SetFolder(FromUtf8(j["storageFolder"].get<std::string>()));
     if (j.value("hideAll", false)) FenceManager::SetAllHidden(true);
     return true;
 }
