@@ -26,7 +26,9 @@ Includes carry the folder: `#include "fence/fence_window.h"`.
 | | `fence_selection.cpp`, `fence_rename.cpp` | Selection and marquee; in-place rename of the fence and of icons |
 | | `fence_sort_filter.cpp`, `icon_sort.cpp` | Sort state and search filter; icon ordering (tested) |
 | | `fence_source_folder.cpp` | Folder-backed fences: enumeration and change watching |
-| | `fence_drop_target.cpp` | OLE drop target (files and shell objects) |
+| | `fence_drop_target.cpp`, `fence_drag_source.cpp` | OLE drop target (files and shell objects); icons dragged out of a fence become a shell drag |
+| | `stack_chain.cpp`, `fence_stack.cpp` | Stacks of folded fences: the chain data model (pure, tested) and its application to the windows |
+| | `text_edit.cpp` | Single-line editing state with caret and selection (pure, tested); keys and clipboard live in `fence_keyboard.cpp` |
 | `render/` | `render.cpp` + `render_styles/_icons/_backdrop/_surface.cpp` | `RenderContext`: brushes and fonts, icon cache, frosted-glass backdrop, DIB/present |
 | | `render_draw.cpp` | One frame: title bar, search box, icon grid/list, scrollbar, marquee |
 | | `image_filters.cpp`, `list_scrollbar.cpp` | Pure pixel filters (blur, saturation, noise) and scrollbar geometry (tested) |
@@ -35,10 +37,14 @@ Includes carry the folder: `#include "fence/fence_window.h"`.
 | | `menu_model.cpp`, `menu_popup*.cpp`, `menu_hook.cpp` | HMENU model; popup windows (create/layout, draw, input); dismissal mouse hook |
 | | `shell_context_menu.cpp` | Explorer's file menu and the shell "New" submenu |
 | `settings/` | `settings_panel*.cpp` | Appearance panel: lifecycle, style, layout, drawing, input |
-| `shell/` | `desktop_host.cpp`, `desktop_icons.cpp` | Desktop window host, DPI; hiding the icon list while keeping fences |
+| `shell/` | `desktop_host.cpp`, `desktop_icons.cpp` | Desktop window host, DPI, the desktop icon grid; hiding the icon list while keeping fences |
+| | `desktop_selection.cpp` | Mirrors the desktop rubber band onto folded tiles; drags tiles and desktop icons together |
+| | `shell_integration.cpp` | Explorer menu entries (HKCU registry verbs) and the command line they send to the running instance |
 | | `explorer_sort.cpp` | Explorer's sort order of a folder |
 | `tray/` | `tray.cpp` | Notification icon and its menu |
 | `core/` | `config.cpp`, `localization.cpp` | `config.json` persistence, autostart; key-based localization (`L10n::Tr`) |
+| | `appearance_json.cpp`, `presets.cpp` | A fence's editable look as JSON (tested); default look and named presets |
+| | `storage.cpp`, `app_paths.cpp` | The storage folder with one subfolder per fence; settings folder and portable mode (`portable.flag`) |
 
 ## Build and run
 
@@ -47,6 +53,8 @@ cmake -B build -G "Visual Studio 15 2017" -A x64
 cmake --build build --config Release --target openfences
 build/Release/openfences.exe
 ```
+
+Packaging: `powershell -File tools/package.ps1` builds Release and writes `dist/OpenFences-<version>-portable.zip` and `-setup.exe` (Inno Setup script in `installer/`). The version comes from `project(... VERSION x.y.z)` in `CMakeLists.txt`. Publish to GitHub (push, tag, release) only when the owner asks.
 
 `build/` is build output and is git-ignored; never commit it. Research spikes live in `tools/` (build with `-DOPENFENCES_BUILD_TOOLS=ON`); `experiments/legacy-hook/` is unused; design notes are in `docs/`.
 

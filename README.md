@@ -17,10 +17,17 @@ This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigo
 - **Desktop icon grouping** — create translucent frosted-glass "fences" on the desktop; drag icons into them to group them
 - **Frosted glass look** — Acrylic-style background: downsampled blur, saturation boost and noise, close to the native Windows 11 look
 - **Windows 11 style context menu** — custom-drawn Fluent Design menu with rounded corners, blur background and soft shadow
-- **System tray** — new fence, hide/show everything, language, start with Windows, desktop shortcut
+- **Files move, not copy** — a file dragged from the desktop into a fence is moved into a storage folder, in a subfolder named after the fence (rename the fence and the folder follows); dragging it out to the desktop moves it back
+- **Grid or list** — grid with a horizontal or vertical fill direction and optional auto-fit to the window size; or a one-column list
+- **Fold into a title bar or an icon tile** — a folded fence is either a title bar or a small icon tile (any file or folder icon) that snaps to the desktop icon grid; folded title bars can be **stacked** (drop one onto another, they move as one and slide down when one is opened)
+- **One selection with the desktop** — folded tiles are selected by the desktop rubber band and drag together with ordinary desktop icons
+- **Looks per fence, defaults and presets** — fonts, colours, opacity, title position and height, icon before the title; default settings for new fences, named presets, and copying a look between fences
+- **Real text fields** — rename and search fields have a caret, selection, Ctrl+A/C/X/V and word jumps
+- **Explorer menu entries** — right-click the desktop: *Create panel*; right-click a file or folder: *Move to panel*; the tray menu has a switch (classic menu / "Show more options" on Windows 11)
+- **System tray** — new fence, hide/show everything, language, default fence settings, storage folder, start with Windows (visible check mark), collapse on start, desktop shortcut
 - **Persistent configuration** — fence layout, icon positions and appearance are saved to `%APPDATA%\Open Fences\config.json`
 - **Multi-language UI** — English, Russian and Chinese; the language follows Windows by default, and a new one is just a JSON file (see [docs/LOCALIZATION.md](docs/LOCALIZATION.md))
-- **Tiny** — a single exe (~780 KB), no dependencies, no VC++ runtime needed, portable
+- **Installer or portable** — one exe (under 1 MB), no dependencies, no VC++ runtime needed; the portable zip keeps its settings next to the exe, the installer adds an uninstaller
 
 ---
 
@@ -123,6 +130,8 @@ Config file: `%APPDATA%\Open Fences\config.json`
 
 - [x] Trilingual documentation (English, Russian, Chinese)
 - [x] Russian UI and a key-based localization system (one JSON file per language, system language detection)
+- [x] Installer and portable builds (`tools/package.ps1`)
+- [x] Stacks of folded fences, per-fence storage folders, presets
 - [ ] Remove committed build artifacts from version control
 - [ ] Linux port (tracked upstream in issue #8). The current code is Win32 / Direct2D, so this means a new UI backend; the desktop-icon model differs per desktop environment (KDE Plasma, GNOME, ...)
 
