@@ -10,12 +10,14 @@ namespace Desktop {
 HWND FindIconListHost();
 
 // The grid the desktop snaps its own icons to, in the icon list's client
-// coordinates (physical pixels): cell size and the offset of cell (0, 0).
+// coordinates (physical pixels). `cellW` x `cellH` is the spacing between
+// cells; `glyphCenterX` / `glyphTop` locate the glyph of one real desktop icon
+// (the anchor cell), so every other cell's glyph sits at that plus whole cells.
 struct IconGrid {
     bool ok = false;
     HWND list = nullptr;
     int cellW = 0, cellH = 0;
-    int originX = 0, originY = 0;
+    int glyphCenterX = 0, glyphTop = 0;
 };
 IconGrid QueryIconGrid();
 

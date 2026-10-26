@@ -230,6 +230,7 @@ void FenceWindow::ToggleCollapse() {
         CollapsedSize(w, h);
         SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
             SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        if (m_render->Appearance().collapseStyle == 1) SnapTileToDesktopGrid();
     }
     // SetWindowPos raises WM_SIZE → Resize + Redraw, and Redraw already knows
     // the new m_collapsed state (arrow direction, icons skipped).
@@ -242,6 +243,7 @@ void FenceWindow::SyncCollapsedSize() {
     CollapsedSize(w, h);
     SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
         SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    if (m_render->Appearance().collapseStyle == 1) SnapTileToDesktopGrid();
 }
 
 void FenceWindow::ApplyStyle(const FenceAppearance& src) {

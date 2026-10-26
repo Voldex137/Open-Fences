@@ -1,6 +1,10 @@
 #include "fence/fence_window.h"
 #include "settings/settings_panel.h"
 #include <cmath>
+#include <algorithm>
+#include <cstdlib>
+#include <vector>
+#include "fence/fence_manager.h"
 #include "render/list_scrollbar.h"
 #include "shell/desktop_host.h"
 #include "core/config.h"
@@ -158,21 +162,65 @@ bool FenceWindow::PressListScrollbar(int mx, int my) {
 }
 
 // A folded icon tile behaves like a desktop icon: after a move it snaps to the
-// nearest cell of the desktop's own icon grid.
+// desktop's own icon grid, glyph on glyph, and never shares a slot with another
+// folded tile (the nearest free slot is taken instead).
 void FenceWindow::SnapTileToDesktopGrid() {
     Desktop::IconGrid g = Desktop::QueryIconGrid();
     if (!g.ok) return;
     RECT wr;
     if (!GetWindowRect(m_hwnd, &wr)) return;
-    POINT p{ wr.left, wr.top };
-    ScreenToClient(g.list, &p);   // the grid lives in the icon list's client space
-    auto snap = [](int v, int origin, int cell) {
-        int n = (int)std::lround((double)(v - origin) / cell);
-        return origin + n * cell;
+    const float glyphInset = 6.0f;   // where RenderContext::DrawCollapsedTile puts the glyph
+    const int tileW = wr.right - wr.left;
+    const int glyphDy = (int)glyphInset;
+
+    // Slot (column n, row m) of a window rect: its glyph centre / top against the anchor glyph.
+    auto slotOf = [&](const RECT& r, int& n, int& m) {
+        POINT p{ r.left, r.top };
+        ScreenToClient(g.list, &p);
+        n = (int)std::lround((double)(p.x + (r.right - r.left) / 2 - g.glyphCenterX) / g.cellW);
+        m = (int)std::lround((double)(p.y + glyphDy - g.glyphTop) / g.cellH);
     };
-    POINT snapped{ snap(p.x, g.originX, g.cellW), snap(p.y, g.originY, g.cellH) };
-    if (snapped.x < 0) snapped.x = g.originX;
-    if (snapped.y < 0) snapped.y = g.originY;
+
+    int n, m;
+    slotOf(wr, n, m);
+
+    // Slots taken by the other folded tiles.
+    std::vector<std::pair<int, int>> taken;
+    for (auto& f : FenceManager::All()) {
+        if (f->Hwnd() == m_hwnd || !f->IsCollapsed() || f->GetRender().Appearance().collapseStyle != 1) continue;
+        RECT r;
+        if (!GetWindowRect(f->Hwnd(), &r)) continue;
+        int fn, fm;
+        slotOf(r, fn, fm);
+        taken.push_back({ fn, fm });
+    }
+    RECT listRc;
+    GetClientRect(g.list, &listRc);
+    auto fits = [&](int cn, int cm) {   // the whole tile stays inside the icon area
+        int left = g.glyphCenterX + cn * g.cellW - tileW / 2;
+        int top = g.glyphTop + cm * g.cellH - glyphDy;
+        return left >= 0 && top >= 0 && left + tileW <= listRc.right && top + (wr.bottom - wr.top) <= listRc.bottom;
+    };
+    auto isTaken = [&](int cn, int cm) {
+        for (auto& t : taken) if (t.first == cn && t.second == cm) return true;
+        return false;
+    };
+    // Nearest free slot: the wanted one, else rings of growing radius around it.
+    int bestN = n, bestM = m;
+    bool found = fits(n, m) && !isTaken(n, m);
+    for (int radius = 1; !found && radius < 60; radius++) {
+        double bestD = 1e18;
+        for (int dn = -radius; dn <= radius; dn++)
+            for (int dm = -radius; dm <= radius; dm++) {
+                if ((std::max)(std::abs(dn), std::abs(dm)) != radius) continue;
+                if (!fits(n + dn, m + dm) || isTaken(n + dn, m + dm)) continue;
+                double d = (double)dn * dn + (double)dm * dm;
+                if (d < bestD) { bestD = d; bestN = n + dn; bestM = m + dm; found = true; }
+            }
+    }
+    if (!found) return;
+
+    POINT snapped{ g.glyphCenterX + bestN * g.cellW - tileW / 2, g.glyphTop + bestM * g.cellH - glyphDy };
     ClientToScreen(g.list, &snapped);
     HWND parent = GetParent(m_hwnd);
     if (parent) ScreenToClient(parent, &snapped);
