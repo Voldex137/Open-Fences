@@ -43,14 +43,14 @@ void CreateDesktopShortcut() {
         return;
     wchar_t exe[MAX_PATH];
     GetModuleFileNameW(nullptr, exe, MAX_PATH);
-    std::wstring lnk = std::wstring(desktop) + L"\\openFences.lnk";
+    std::wstring lnk = std::wstring(desktop) + L"\\Open Fences.lnk";
 
     IShellLinkW* sl = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
                                 IID_IShellLinkW, (void**)&sl)))
         return;
     sl->SetPath(exe);
-    sl->SetDescription(L"openFences");
+    sl->SetDescription(L"Open Fences");
     IPersistFile* pf = nullptr;
     if (SUCCEEDED(sl->QueryInterface(IID_IPersistFile, (void**)&pf))) {
         pf->Save(lnk.c_str(), TRUE);
