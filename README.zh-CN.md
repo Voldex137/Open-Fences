@@ -28,8 +28,8 @@
 
 > **安全提示**：上游曾把预编译的 `.exe`/`.dll` 提交进仓库，本 fork 已移除。请勿运行来源不明的预编译文件，建议从源码自行构建。当前版本不会向 Explorer 注入 DLL（`experiments/legacy-hook` 目录是早期设计遗留、未被使用的代码）。
 
-1. 从源码构建（见[构建](#构建)）
-2. 将 `openfences.exe` 放到任意目录，双击运行
+1. 在 [Releases](https://github.com/Voldex137/Open-Fences/releases/latest) 下载安装包（`OpenFences-<版本>-setup.exe`）或便携版压缩包（`OpenFences-<版本>-portable.zip`）；便携版把设置保存在 exe 旁边。也可从源码构建（见[构建](#构建)）
+2. 安装后运行（便携版：解压到任意目录，双击 `openfences.exe`）
 3. 右键右下角托盘图标 → 设置语言、开机自启、创建桌面快捷方式
 4. 在桌面上拖拽图标到围栏中即可
 
@@ -42,9 +42,9 @@
 ```bash
 # 前置条件：Visual Studio 2017+（含 Windows 10 SDK）、CMake 3.20+
 
-git clone <本仓库>
-cd openFences
-cmake -B build -G "Visual Studio 15 2017" -A x64
+git clone https://github.com/Voldex137/Open-Fences.git
+cd Open-Fences
+cmake -B build -A x64
 cmake --build build --config Release --target openfences
 ```
 

@@ -28,8 +28,8 @@ This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigo
 
 > **Security note.** Upstream committed prebuilt `.exe`/`.dll` files into its repository; this fork removed them. Do not run prebuilt binaries from unknown sources, and prefer building from source. The current app does not inject any DLL into Explorer (the `experiments/legacy-hook` directory is an unused leftover of an early design).
 
-1. Build it from source (see [Build](#build)).
-2. Put `openfences.exe` anywhere and run it.
+1. Download the installer (`OpenFences-<version>-setup.exe`) or the portable archive (`OpenFences-<version>-portable.zip`) from [Releases](https://github.com/Voldex137/Open-Fences/releases/latest). The portable build keeps its settings next to the exe. Or build from source (see [Build](#build)).
+2. Install and run it (portable: unzip anywhere and run `openfences.exe`).
 3. Right-click the tray icon to set the language, enable autostart or create a desktop shortcut.
 4. Drag desktop icons into a fence.
 
@@ -42,9 +42,9 @@ This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigo
 ```bash
 # Prerequisites: Visual Studio 2017+ (with the Windows 10 SDK), CMake 3.20+
 
-git clone <this repository>
-cd openFences
-cmake -B build -G "Visual Studio 15 2017" -A x64
+git clone https://github.com/Voldex137/Open-Fences.git
+cd Open-Fences
+cmake -B build -A x64
 cmake --build build --config Release --target openfences
 ```
 
