@@ -2,6 +2,7 @@
 #include "core/config.h"
 #include "core/localization.h"
 #include "core/presets.h"
+#include "core/appearance_json.h"
 #include "shell/desktop_host.h"
 #include "shell/desktop_icons.h"
 
@@ -57,14 +58,17 @@ void Remove(HWND hwnd) {
 // re-discovers the fresh desktop host on its own.
 void Rebuild() {
     DesktopIcons::BeginRebuild();
-    struct Saved { FenceData data; std::vector<IconEntry> icons; bool collapsed; };
+    struct Saved { FenceData data; std::vector<IconEntry> icons; bool collapsed; FenceAppearance look; };
     std::vector<Saved> saved;
     saved.reserve(g_fences.size());
     for (auto& f : g_fences)
-        saved.push_back({ f->GetData(), f->Icons(), f->IsCollapsed() });
+        saved.push_back({ f->GetData(), f->Icons(), f->IsCollapsed(), f->GetRender().Appearance() });
     g_fences.clear();   // dtors see the dead HWNDs and skip DestroyWindow
     for (auto& s : saved) {
         auto f = std::make_unique<FenceWindow>(s.data);
+        // The new window starts with the built-in look: put the user's back.
+        AppearanceJson::CopyStyle(f->GetRender().Appearance(), s.look);
+        f->GetRender().RebuildStyles();
         if (!s.data.sourceFolder.empty()) {
             f->SetSortPreset(s.data.sortCol, s.data.sortAsc);
             f->MapToFolder(s.data.sourceFolder);
