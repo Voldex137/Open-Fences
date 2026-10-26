@@ -19,6 +19,7 @@
 
   "fence.new_title": "New Fence",
   "fence.rename": "Rename",
+  "fence.unstack": "Detach from stack",
   "fence.appearance": "Appearance Settings...",
   "fence.delete": "Delete Fence",
   "fence.remove": "Remove",

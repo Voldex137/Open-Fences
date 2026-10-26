@@ -19,6 +19,7 @@
 
   "fence.new_title": "新建围栏",
   "fence.rename": "重命名",
+  "fence.unstack": "从堆叠中分离",
   "fence.appearance": "外观设置...",
   "fence.delete": "删除围栏",
   "fence.remove": "移除",

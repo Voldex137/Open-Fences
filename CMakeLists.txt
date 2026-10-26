@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(openFences VERSION 0.1.0 LANGUAGES CXX)
+project(openFences VERSION 0.1.2 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Static CRT linking so the released .exe is self-contained; recipients do not
@@ -46,6 +46,8 @@ add_executable(openfences
     app/src/tray/tray.cpp
     app/src/fence/fence_layout.cpp
     app/src/fence/icon_grid.cpp
+    app/src/fence/stack_chain.cpp
+    app/src/fence/fence_stack.cpp
     app/src/fence/icon_sort.cpp
     app/src/fence/fence_selection.cpp
     app/src/fence/fence_sort_filter.cpp
@@ -169,4 +171,8 @@ if(OPENFENCES_BUILD_TESTS)
     target_include_directories(appearance_json_test PRIVATE app/include tests)
     target_link_libraries(appearance_json_test PRIVATE nlohmann_json::nlohmann_json)
     add_test(NAME appearance_json COMMAND appearance_json_test)
+
+    add_executable(stack_chain_test tests/stack_chain_test.cpp app/src/fence/stack_chain.cpp)
+    target_include_directories(stack_chain_test PRIVATE app/include tests)
+    add_test(NAME stack_chain COMMAND stack_chain_test)
 endif()

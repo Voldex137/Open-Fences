@@ -5,6 +5,7 @@
 #include "render/menu_icons.h"
 #include "core/config.h"
 #include "core/storage.h"
+#include "fence/fence_stack.h"
 #include "menu/shell_context_menu.h"
 #include <windowsx.h>
 #include <shlobj.h>
@@ -24,6 +25,7 @@ enum FenceMenuCmd : int {
     kCmdAppearance   = 4,
     kCmdMapFolder    = 5,
     kCmdUnmapFolder  = 6,
+    kCmdUnstack      = 7,
     kCmdSortName     = 10,
     kCmdSortDate     = 11,
     kCmdSortType     = 12,
@@ -164,6 +166,8 @@ void FenceWindow::ShowFenceMenu(int iconHit, POINT screenPt, POINT clientPt) {
         AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     }
 
+    if (FenceStack::IsStacked(*this))
+        AppendMenuW(menu, MF_STRING, kCmdUnstack, L10n::Tr("fence.unstack"));
     AppendMenuW(menu, MF_STRING, kCmdRename, L10n::Tr("fence.rename"));
     AppendMenuW(menu, MF_STRING, kCmdAppearance, L10n::Tr("fence.appearance"));
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
@@ -256,6 +260,7 @@ void FenceWindow::ShowFenceMenu(int iconHit, POINT screenPt, POINT clientPt) {
 
     switch (cmd) {
     case kCmdRename:      EnterRename(); break;
+    case kCmdUnstack:     FenceStack::Extract(*this); break;
     case kCmdDeleteFence:
         if (s_owner) PostMessage(s_owner, WM_FENCE_DELETE, (WPARAM)m_hwnd, 0);
         break;

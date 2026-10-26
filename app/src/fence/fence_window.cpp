@@ -5,6 +5,7 @@
 #include "settings/settings_panel.h"
 #include "core/config.h"
 #include "core/appearance_json.h"
+#include "fence/fence_stack.h"
 #include "core/storage.h"
 #include <shellapi.h>
 #include <shobjidl.h>   // IContextMenu
@@ -19,6 +20,7 @@ HWND FenceWindow::DesktopHost() { return Desktop::FindIconListHost(); }
 FenceWindow::FenceWindow(const FenceData& data)
     : m_title(data.title), m_id(data.id), m_x(data.x), m_y(data.y)
 {
+    m_stackAbove = data.stackAbove;
     m_render = std::make_unique<RenderContext>(data.w, data.h);
 
     // Fences live *inside* the desktop window tree (see DesktopHost). That
@@ -360,7 +362,7 @@ FenceData FenceWindow::GetData() const {
     // size: this is what gets saved, and what a restart or rebuild recreates.
     int w = m_collapsed && m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
     int h = m_collapsed && m_expandedH > 0 ? m_expandedH : (int)m_render->Height();
-    return { m_id, m_title, m_x, m_y, w, h, true, m_sourceFolder, m_sortColumn, m_sortAscending };
+    return { m_id, m_title, m_x, m_y, w, h, true, m_sourceFolder, m_sortColumn, m_sortAscending, m_stackAbove };
 }
 
 // ── Sort ──
@@ -423,6 +425,7 @@ LRESULT FenceWindow::OnWindowPosChanged(UINT msg, WPARAM wp, LPARAM lp)     {
         RECT wr; GetWindowRect(m_hwnd, &wr);
         m_x = wr.left;
         m_y = wr.top;
+        FenceStack::Layout();   // rows stacked under this one follow it (and re-flow when it folds or grows)
         // Re-snapshot the frosted-glass backdrop shortly after the
         // window settles. SetTimer resets the countdown, so a continuous
         // move/resize only triggers one capture once it stops.

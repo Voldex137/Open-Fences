@@ -6,6 +6,7 @@
 #include "core/app_paths.h"
 #include "core/appearance_json.h"
 #include "core/presets.h"
+#include "fence/fence_stack.h"
 #include "shell/shell_integration.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
@@ -56,6 +57,7 @@ json SaveFence(FenceWindow& f) {
     jf["h"]         = d.h;
     jf["collapsed"] = f.IsCollapsed();
     jf.update(AppearanceJson::ToJson(app));
+    if (!f.StackAbove().empty()) jf["stackAbove"] = ToUtf8(f.StackAbove());
     jf["source"]    = ToUtf8(d.sourceFolder);
     jf["sortCol"]   = d.sortCol;
     jf["sortAsc"]   = d.sortAsc;
@@ -80,6 +82,7 @@ void LoadFence(const json& jf) {
     fd.y     = jf.value("y", 0);
     fd.w     = jf.value("w", 0);
     fd.h     = jf.value("h", 0);
+    fd.stackAbove = FromUtf8(jf.value("stackAbove", std::string()));
     fd.visible = false;   // shown once the saved state is applied (no flash of the expanded fence)
     if (fd.w < 40 || fd.h < 20) return;   // degenerate entry — skip
 
@@ -220,6 +223,8 @@ bool LoadApp() {
     if (j.contains("fences") && j["fences"].is_array())
         for (const auto& jf : j["fences"])
             LoadFence(jf);
+
+    FenceStack::Layout();   // rows hanging under another folded panel take their places
 
     // An empty array is a legitimate state (the user deleted every fence) —
     // only a MISSING file triggers the defaults, so honor it.

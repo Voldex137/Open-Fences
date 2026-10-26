@@ -19,6 +19,7 @@
 
   "fence.new_title": "Новая панель",
   "fence.rename": "Переименовать",
+  "fence.unstack": "Открепить от стопки",
   "fence.appearance": "Настройки внешнего вида...",
   "fence.delete": "Удалить панель",
   "fence.remove": "Убрать",

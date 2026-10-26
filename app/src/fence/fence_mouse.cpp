@@ -1,5 +1,6 @@
 #include "fence/fence_window.h"
 #include "settings/settings_panel.h"
+#include "fence/fence_stack.h"
 #include <cmath>
 #include <algorithm>
 #include <cstdlib>
@@ -280,6 +281,8 @@ void FenceWindow::PressTitleBar(int mx, int my) {
     m_moveOffX = mx;
     m_moveOffY = my;
     m_moving = true;
+    m_moveStarted = false;
+    GetCursorPos(&m_movePressPt);
     SetCapture(m_hwnd);
 }
 
@@ -419,6 +422,16 @@ void FenceWindow::MoveMarquee(int mx, int my) {
 
 // Cursor to parent-client coordinates, keeping the grabbed offset.
 void FenceWindow::MoveFenceWithCursor(int mx, int my) {
+    // A row of a stack stays put until the cursor really drags (a plain click on it
+    // must not shake it loose); the first real drag takes it out of the stack.
+    if (!m_moveStarted) {
+        POINT c; GetCursorPos(&c);
+        bool dragged = abs(c.x - m_movePressPt.x) >= GetSystemMetrics(SM_CXDRAG) ||
+                   abs(c.y - m_movePressPt.y) >= GetSystemMetrics(SM_CYDRAG);
+        if (!dragged && !m_stackAbove.empty()) return;
+        if (dragged) m_moveStarted = true;
+        if (dragged && !m_stackAbove.empty()) FenceStack::Extract(*this);
+    }
     POINT p{ mx, my };
     ClientToScreen(m_hwnd, &p);
     HWND parent = GetParent(m_hwnd);
@@ -546,6 +559,7 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
         SettleDragGroup();
     }
     bool geomChanged = m_moving || m_resizeMask;
+    if (m_moving && m_moveStarted) FenceStack::DropOnto(*this);   // dropped on another folded row: stack under it
     if (m_moving && m_collapsed && m_render->Appearance().collapseStyle == 1)
         SnapTileToDesktopGrid();
     m_moving = false;

@@ -23,6 +23,7 @@ struct FenceData {
     std::wstring sourceFolder;
     int sortCol = 0;        // 0=Name, 1=DateModified, 2=Size, 3=Type
     bool sortAsc = true;
+    std::wstring stackAbove;   // id of the panel this one hangs below in a stack (empty = none)
 };
 
 class FenceWindow {
@@ -92,6 +93,9 @@ public:
     /// While collapsed, re-apply the window height so a live-edited title bar
     /// height shows immediately (no-op when expanded).
     void SyncCollapsedSize();
+    // Stack of folded panels (see fence_stack.h): the panel directly above this one.
+    const std::wstring& StackAbove() const { return m_stackAbove; }
+    void SetStackAbove(const std::wstring& id) { m_stackAbove = id; }
     // Adopts the editable look of `src` (a preset, the defaults, or another fence)
     // and brings the layout and the saved config in line with it.
     void ApplyStyle(const FenceAppearance& src);
@@ -339,6 +343,9 @@ private:
     bool m_popped = false;      // expanded by a click on its icon tile: folds back on an outside click
     bool m_pollWasDown = false;
     bool m_modalUi = false;     // a menu is open on this fence: do not fold under it
+    std::wstring m_stackAbove;
+    POINT m_movePressPt = {};   // cursor (screen) at the press that armed a move
+    bool m_moveStarted = false; // the cursor has travelled far enough to count as a drag
     bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
     POINT m_tilePressPt = {};
     void CollapsedSize(int& w, int& h) const;   // window size while collapsed
