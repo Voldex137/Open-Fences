@@ -49,6 +49,8 @@ public:
     // Moves every icon whose file lives in the storage folder back to the desktop
     // (called when the fence is deleted).
     void ReturnStoredItemsToDesktop();
+    // Files that were stored before panels had their own folders move into this panel's folder.
+    void OrganizeStoredItems();
     /// Re-snap every icon onto the icon grid and resolve overlaps. Call after
     /// anything that moves the grid (resize, title-bar height change).
     void RelayoutIcons();

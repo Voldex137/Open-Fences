@@ -96,15 +96,92 @@ bool IsStored(const std::wstring& path) {
     return SameText(path.substr(0, folder.size()), folder) && path[folder.size()] == L'\\';
 }
 
-std::wstring AdoptFromDesktop(const std::wstring& path) {
+std::wstring SafeFolderName(const std::wstring& panelTitle) {
+    std::wstring name;
+    for (wchar_t c : panelTitle) {
+        bool bad = c < 32 || wcschr(L"\\/:*?\"<>|", c) != nullptr;
+        name.push_back(bad ? L'_' : c);
+    }
+    while (!name.empty() && (name.back() == L'.' || name.back() == L' ')) name.pop_back();
+    size_t start = 0;
+    while (start < name.size() && name[start] == L' ') start++;
+    name = name.substr(start);
+    if (name.empty()) name = L"Panel";
+    return name;
+}
+
+std::wstring PanelFolder(const std::wstring& panelTitle) {
+    return Folder() + L"\\" + SafeFolderName(panelTitle);
+}
+
+namespace {
+
+bool EnsureDirectory(const std::wstring& dir) {
+    return SHCreateDirectoryExW(nullptr, dir.c_str(), nullptr) == ERROR_SUCCESS ||
+           GetFileAttributesW(dir.c_str()) != INVALID_FILE_ATTRIBUTES;
+}
+
+}  // namespace
+
+std::wstring AdoptFromDesktop(const std::wstring& path, const std::wstring& panelTitle) {
     if (!IsDesktopItem(path)) return {};
-    std::wstring folder = Folder();
-    if (SHCreateDirectoryExW(nullptr, folder.c_str(), nullptr) != ERROR_SUCCESS &&
-        GetFileAttributesW(folder.c_str()) == INVALID_FILE_ATTRIBUTES)
-        return {};
+    std::wstring folder = PanelFolder(panelTitle);
+    if (!EnsureDirectory(folder)) return {};
     std::wstring target = UniquePath(folder, NameOf(path));
     if (target.empty() || !MovePath(path, target)) return {};
     return target;
+}
+
+std::wstring MoveIntoPanel(const std::wstring& path, const std::wstring& panelTitle) {
+    if (!IsStored(path)) return {};
+    std::wstring folder = PanelFolder(panelTitle);
+    if (SameText(ParentOf(path), folder)) return {};
+    if (GetFileAttributesW(path.c_str()) == INVALID_FILE_ATTRIBUTES || !EnsureDirectory(folder)) return {};
+    std::wstring target = UniquePath(folder, NameOf(path));
+    if (target.empty() || !MovePath(path, target)) return {};
+    return target;
+}
+
+bool IsInStorageRoot(const std::wstring& path) {
+    return IsStored(path) && SameText(ParentOf(path), Folder());
+}
+
+bool RenamePanelFolder(const std::wstring& oldTitle, const std::wstring& newTitle) {
+    std::wstring from = PanelFolder(oldTitle), to = PanelFolder(newTitle);
+    if (SameText(from, to) || GetFileAttributesW(from.c_str()) == INVALID_FILE_ATTRIBUTES) return false;
+    if (GetFileAttributesW(to.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        if (MoveFileW(from.c_str(), to.c_str())) return true;
+    }
+    // The target name exists (another panel of that name): merge, file by file.
+    EnsureDirectory(to);
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW((from + L"\\*").c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            std::wstring name = fd.cFileName;
+            if (name == L"." || name == L"..") continue;
+            std::wstring target = UniquePath(to, name);
+            if (!target.empty()) MovePath(from + L"\\" + name, target);
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    RemoveDirectoryW(from.c_str());
+    return true;
+}
+
+std::wstring ReplacePanelFolder(const std::wstring& path, const std::wstring& oldTitle,
+                                const std::wstring& newTitle) {
+    std::wstring from = PanelFolder(oldTitle);
+    if (path.size() > from.size() && SameText(path.substr(0, from.size()), from) && path[from.size()] == L'\\') {
+        std::wstring moved = PanelFolder(newTitle) + path.substr(from.size());
+        if (GetFileAttributesW(moved.c_str()) != INVALID_FILE_ATTRIBUTES) return moved;
+        // A merge renamed the file on collision: keep the old path, the icon will show as missing.
+    }
+    return path;
+}
+
+void RemovePanelFolderIfEmpty(const std::wstring& panelTitle) {
+    RemoveDirectoryW(PanelFolder(panelTitle).c_str());   // fails (and does nothing) when it still has files
 }
 
 std::wstring ReturnToDesktop(const std::wstring& path) {

@@ -45,9 +45,10 @@ void SettingsPanel::DrawLabel(const std::wstring& text, float y, float x) {
 }
 
 void SettingsPanel::DrawValueRight(const std::wstring& text, float y) {
-    float s = m_s, W = (float)m_panelW;
+    // The values belong to the sliders of the left column (content x 20..340).
+    float s = m_s;
     m_render->Target()->DrawText(text.c_str(), (UINT32)text.size(), m_fmtValue.Get(),
-        D2D1_RECT_F{ W - 100 * s, y, W - 20 * s, y + 18 * s }, m_brText.Get());
+        D2D1_RECT_F{ 240 * s, y, 340 * s, y + 18 * s }, m_brText.Get());
 }
 
 void SettingsPanel::DrawPanel() {

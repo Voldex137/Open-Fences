@@ -1,5 +1,6 @@
 #include "fence/fence_window.h"
 #include "core/config.h"
+#include "core/storage.h"
 #include "shell/shell_integration.h"
 #include <shlwapi.h>
 
@@ -25,7 +26,13 @@ void FenceWindow::ExitRename(bool commit) {
     if (!m_renaming) return;
     m_renaming = false;
     if (commit && m_titleEdit.Text() != m_title) {
+        std::wstring oldTitle = m_title;
         m_title = m_titleEdit.Text();
+        // The panel's files live in a folder named after it: rename it and fix the icon paths.
+        if (!IsMapped() && Storage::RenamePanelFolder(oldTitle, m_title)) {
+            for (auto& icon : m_icons) icon.path = Storage::ReplacePanelFolder(icon.path, oldTitle, m_title);
+            for (auto& p : m_selectedPaths) p = Storage::ReplacePanelFolder(p, oldTitle, m_title);
+        }
         ShellIntegration::Refresh();   // the panel name is in the Explorer menu
         Config::MarkDirty();
     }

@@ -135,8 +135,23 @@ void FenceWindow::SetIcons(const std::vector<IconEntry>& entries) {
 
 void FenceWindow::AddDroppedItem(const std::wstring& name, const std::wstring& path,
                                  float atX, float atY) {
-    std::wstring stored = IsMapped() ? std::wstring() : Storage::AdoptFromDesktop(path);
+    std::wstring stored;
+    if (!IsMapped()) {
+        stored = Storage::AdoptFromDesktop(path, m_title);                // a desktop item moves into this panel's folder
+        if (stored.empty()) stored = Storage::MoveIntoPanel(path, m_title);  // a stored file from another panel follows
+    }
     AddIcon(name, stored.empty() ? path : stored, atX, atY);
+}
+
+void FenceWindow::OrganizeStoredItems() {
+    if (IsMapped()) return;
+    bool changed = false;
+    for (auto& icon : m_icons) {
+        if (!Storage::IsInStorageRoot(icon.path)) continue;
+        std::wstring moved = Storage::MoveIntoPanel(icon.path, m_title);
+        if (!moved.empty()) { icon.path = moved; changed = true; }
+    }
+    if (changed) Config::MarkDirty();
 }
 
 void FenceWindow::ReturnStoredItemsToDesktop() {
@@ -145,6 +160,7 @@ void FenceWindow::ReturnStoredItemsToDesktop() {
         std::wstring back = Storage::ReturnToDesktop(icon.path);
         if (!back.empty()) icon.path = back;
     }
+    Storage::RemovePanelFolderIfEmpty(m_title);
 }
 
 void FenceWindow::AddIcon(const std::wstring& name, const std::wstring& path,

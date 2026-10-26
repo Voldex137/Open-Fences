@@ -224,6 +224,7 @@ bool LoadApp() {
         for (const auto& jf : j["fences"])
             LoadFence(jf);
 
+    for (auto& f : FenceManager::All()) f->OrganizeStoredItems();   // older layouts: one shared folder
     FenceStack::Layout();   // rows hanging under another folded panel take their places
 
     // An empty array is a legitimate state (the user deleted every fence) —
