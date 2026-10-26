@@ -86,9 +86,9 @@ LRESULT FenceWindow::OnKeyDown(UINT msg, WPARAM wp, LPARAM lp) {
 LRESULT FenceWindow::OnKillFocus(UINT msg, WPARAM wp, LPARAM lp) {
     if (this) {
         if (m_renaming)
-            ExitRename(false);
+            ExitRename(true);       // like Explorer: losing focus keeps the new name
         else if (m_renameIcon >= 0)
-            ExitIconRename(true);   // Explorer commits on focus loss
+            ExitIconRename(true);
         else if (m_searchFocused) {
             m_searchFocused = false;
             m_cursorVisible = false;

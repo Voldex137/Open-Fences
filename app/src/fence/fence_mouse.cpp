@@ -114,6 +114,8 @@ LRESULT FenceWindow::OnLButtonDown(UINT msg, WPARAM wp, LPARAM lp) {
     // rename first (Explorer behavior), then the click acts normally.
     if (m_renameIcon >= 0 && HitTestIcon(mx, my) != m_renameIcon)
         ExitIconRename(true);
+    // Same for the title rename: a click anywhere in the fence ends it and keeps the name.
+    if (m_renaming) ExitRename(true);
 
     if (m_collapsed && m_render->Appearance().collapseStyle == 1 && !m_renaming) {
         PressTile(mx, my);
