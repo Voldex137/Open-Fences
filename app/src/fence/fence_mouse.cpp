@@ -167,7 +167,7 @@ bool FenceWindow::PressListScrollbar(int mx, int my) {
 // A folded icon tile behaves like a desktop icon: after a move it snaps to the
 // desktop's own icon grid, glyph on glyph, and never shares a slot with another
 // folded tile (the nearest free slot is taken instead).
-void FenceWindow::SnapTileToDesktopGrid() {
+void FenceWindow::SnapTileToDesktopGrid(const std::vector<HWND>* ignore) {
     if (!m_render->Appearance().tileSnap) return;   // free placement
     Desktop::IconGrid g = Desktop::QueryIconGrid();
     if (!g.ok) return;
@@ -192,6 +192,7 @@ void FenceWindow::SnapTileToDesktopGrid() {
     std::vector<std::pair<int, int>> taken;
     for (auto& f : FenceManager::All()) {
         if (f->Hwnd() == m_hwnd || !f->IsCollapsed() || f->GetRender().Appearance().collapseStyle != 1) continue;
+        if (ignore && std::find(ignore->begin(), ignore->end(), f->Hwnd()) != ignore->end()) continue;
         RECT r;
         if (!GetWindowRect(f->Hwnd(), &r)) continue;
         int fn, fm;
@@ -261,6 +262,18 @@ void FenceWindow::PressTile(int mx, int my) {
     m_moving = true;
     m_tilePress = true;
     GetCursorPos(&m_tilePressPt);
+    // Pressing a tile that is part of the selection drags the whole selection.
+    m_tileGroup.clear();
+    if (m_tileSelected) {
+        for (auto& f : FenceManager::All()) {
+            if (f.get() == this || !f->IsTileSelected() || !f->IsCollapsed() ||
+                f->GetRender().Appearance().collapseStyle != 1) continue;
+            RECT r;
+            if (GetWindowRect(f->Hwnd(), &r)) m_tileGroup.push_back({ f->Hwnd(), POINT{ r.left, r.top } });
+        }
+        RECT me;
+        if (GetWindowRect(m_hwnd, &me)) m_tileGroupSelfStart = POINT{ me.left, me.top };
+    }
     SetCapture(m_hwnd);
 }
 
@@ -438,6 +451,18 @@ void FenceWindow::MoveFenceWithCursor(int mx, int my) {
     if (parent) ScreenToClient(parent, &p);
     SetWindowPos(m_hwnd, nullptr, p.x - m_moveOffX, p.y - m_moveOffY,
                  0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    // The rest of a dragged tile selection follows by the same distance.
+    if (!m_tileGroup.empty()) {
+        RECT me;
+        if (GetWindowRect(m_hwnd, &me)) {
+            int dx = me.left - m_tileGroupSelfStart.x, dy = me.top - m_tileGroupSelfStart.y;
+            for (const auto& g : m_tileGroup) {
+                POINT np{ g.start.x + dx, g.start.y + dy };
+                if (HWND par = GetParent(g.hwnd)) ScreenToClient(par, &np);
+                SetWindowPos(g.hwnd, nullptr, np.x, np.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+        }
+    }
 }
 
 void FenceWindow::ResizeFenceWithCursor(int mx, int my) {
@@ -566,8 +591,25 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
     }
     bool geomChanged = m_moving || m_resizeMask;
     if (m_moving && m_moveStarted) FenceStack::DropOnto(*this);   // dropped on another folded row: stack under it
-    if (m_moving && m_collapsed && m_render->Appearance().collapseStyle == 1)
-        SnapTileToDesktopGrid();
+    if (m_moving && m_collapsed && m_render->Appearance().collapseStyle == 1) {
+        if (m_tileGroup.empty()) {
+            SnapTileToDesktopGrid();
+        } else {
+            // The group settles tile by tile (the dragged one first); tiles that are not placed
+            // yet do not occupy slots, so neighbours keep their spacing.
+            std::vector<HWND> pending{ m_hwnd };
+            for (const auto& g : m_tileGroup) pending.push_back(g.hwnd);
+            auto place = [&](FenceWindow* f) {
+                pending.erase(std::remove(pending.begin(), pending.end(), f->Hwnd()), pending.end());
+                f->SnapTileToDesktopGrid(&pending);
+            };
+            place(this);
+            for (const auto& g : m_tileGroup)
+                for (auto& f : FenceManager::All())
+                    if (f->Hwnd() == g.hwnd) { place(f.get()); break; }
+        }
+    }
+    m_tileGroup.clear();
     m_moving = false;
     m_resizeMask = 0;
     if (wasBusy) ReleaseCapture();

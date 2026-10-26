@@ -173,7 +173,8 @@ private:
     bool PressListScrollbar(int mx, int my);        // true when the press hit the scrollbar
     void PressTitleBar(int mx, int my);
     void PressTile(int mx, int my);
-    void SnapTileToDesktopGrid();     // a collapsed icon tile sits on the desktop icon grid
+    // `ignore`: tiles of a dragged group that are not placed yet (they must not block slots).
+    void SnapTileToDesktopGrid(const std::vector<HWND>* ignore = nullptr);     // a collapsed icon tile sits on the desktop icon grid
     void CollapseOnOutsideClick();    // timer: folder mode folds back after a click elsewhere
     void BeginIconDrag(int hit, int mx, int my);
     void BeginMarquee(int mx, int my, bool addToSelection);
@@ -361,6 +362,10 @@ private:
     POINT m_movePressPt = {};   // cursor (screen) at the press that armed a move
     bool m_moveStarted = false; // the cursor has travelled far enough to count as a drag
     bool m_tileSelected = false;
+    // Group drag of selected tiles: every selected tile with its screen position at the press.
+    struct TileMember { HWND hwnd; POINT start; };
+    std::vector<TileMember> m_tileGroup;
+    POINT m_tileGroupSelfStart = {};
     bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
     POINT m_tilePressPt = {};
     void CollapsedSize(int& w, int& h) const;   // window size while collapsed
