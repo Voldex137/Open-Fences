@@ -56,6 +56,7 @@ json ToJson(const FenceAppearance& app) {
     j["fontName"]      = ToUtf8(app.fontName);
     j["collapseStyle"] = app.collapseStyle;
     j["titleIcon"]     = app.titleIcon;
+    j["tileSnap"]      = app.tileSnap;
     j["iconPath"]      = ToUtf8(app.iconPath);
     return j;
 }
@@ -72,6 +73,7 @@ void FromJson(const json& j, FenceAppearance& app) {
     app.fontSize      = j.value("fontSize", app.fontSize);
     app.collapseStyle = j.value("collapseStyle", app.collapseStyle);
     app.titleIcon     = j.value("titleIcon", app.titleIcon);
+    app.tileSnap      = j.value("tileSnap", app.tileSnap);
     GetString(j, "fontName", app.fontName);
     if (app.fontName[0] == L'\0') wcscpy_s(app.fontName, L"Segoe UI");
     GetString(j, "iconPath", app.iconPath);
@@ -88,6 +90,7 @@ void CopyStyle(FenceAppearance& dst, const FenceAppearance& src) {
     dst.fontSize      = src.fontSize;
     dst.collapseStyle = src.collapseStyle;
     dst.titleIcon     = src.titleIcon;
+    dst.tileSnap      = src.tileSnap;
     wcscpy_s(dst.fontName, src.fontName);
     wcscpy_s(dst.iconPath, src.iconPath);
 }

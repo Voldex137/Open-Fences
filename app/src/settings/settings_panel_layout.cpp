@@ -106,12 +106,14 @@ void SettingsPanel::ComputeLayout() {
     row(4, m_titleIconLblY,   2, half, m_titleIconSeg,   HIT_TITLEICON0);
     row(5, m_iconPickLblY,    3, third, m_iconPickSeg,   HIT_ICONPICK0);
 
-    m_sepY = 392 * s;
-    m_presetsBtn = R(cx2, 404 * s, cw2, 30 * s);
+    row(6, m_tileSnapLblY,    2, half, m_tileSnapSeg,    HIT_TILESNAP0);
+
+    m_sepY = 448 * s;
+    m_presetsBtn = R(cx2, 460 * s, cw2, 30 * s);
     addHit(HIT_PRESETS, m_presetsBtn);
     // Language lives in the tray menu; the defaults have no fence to delete.
     if (m_fence) {
-        m_deleteBtn = R(cx2, 446 * s, cw2, 30 * s);
+        m_deleteBtn = R(cx2, 502 * s, cw2, 30 * s);
         addHit(HIT_DELETE_FENCE, m_deleteBtn);
     }
 }

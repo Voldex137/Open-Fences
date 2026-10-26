@@ -165,6 +165,7 @@ bool FenceWindow::PressListScrollbar(int mx, int my) {
 // desktop's own icon grid, glyph on glyph, and never shares a slot with another
 // folded tile (the nearest free slot is taken instead).
 void FenceWindow::SnapTileToDesktopGrid() {
+    if (!m_render->Appearance().tileSnap) return;   // free placement
     Desktop::IconGrid g = Desktop::QueryIconGrid();
     if (!g.ok) return;
     RECT wr;

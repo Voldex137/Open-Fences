@@ -63,6 +63,7 @@
   "settings.collapse.bar": "Заголовок",
   "settings.collapse.icon": "Иконка",
   "settings.title_icon": "Иконка перед названием",
+  "settings.tile_snap": "Привязка свёрнутой иконки к сетке стола",
   "settings.icon_source": "Иконка",
   "settings.icon.folder": "Папка",
   "settings.icon.file": "Файл...",

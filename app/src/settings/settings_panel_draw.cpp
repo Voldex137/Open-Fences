@@ -90,6 +90,9 @@ void SettingsPanel::DrawPanel() {
                  { L10n::Tr("settings.icon.folder"), L10n::Tr("settings.icon.file"),
                    L10n::Tr("settings.icon.folder_pick") },
                  m_iconPickSeg, iconSource, HIT_ICONPICK0);
+    DrawSegments(L10n::Tr("settings.tile_snap"), m_tileSnapLblY,
+                 { L10n::Tr("settings.on"), L10n::Tr("settings.off") },
+                 m_tileSnapSeg, app.tileSnap ? 0 : 1, HIT_TILESNAP0);
     DrawTitleHeightStepper(app);
     DrawDeleteButton();
     DrawPresetsButton();

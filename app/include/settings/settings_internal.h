@@ -21,6 +21,7 @@ enum : int {
     HIT_COLLAPSE0  = 220,          // +0 title bar, +1 icon
     HIT_TITLEICON0 = 230,          // +0 off, +1 on
     HIT_ICONPICK0  = 240,          // +0 folder, +1 from file, +2 from folder
+    HIT_TILESNAP0  = 260,          // +0 on, +1 off
     HIT_PRESETS    = 250,
 };
 

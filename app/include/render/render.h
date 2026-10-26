@@ -49,6 +49,7 @@ struct FenceAppearance {
     int   fillDir    = 0;       // grid fill order: 0 = horizontal (row by row), 1 = vertical
     bool  autoReflow = true;    // grid: re-flow icons to the window size on every resize
     int   collapseStyle = 0;    // when collapsed: 0 = title bar, 1 = icon tile
+    bool  tileSnap = true;      // a folded icon tile snaps to the desktop icon grid (one tile per slot)
     bool  titleIcon = false;    // draw the icon before the title text
     WCHAR iconPath[260] = L"";  // file/folder whose icon is shown; empty = a folder
     int   displayMode = 0;      // 0 = grid (icons in a grid), 1 = list (one per row)

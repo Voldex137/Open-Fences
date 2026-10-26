@@ -63,6 +63,7 @@
   "settings.collapse.bar": "Title bar",
   "settings.collapse.icon": "Icon",
   "settings.title_icon": "Icon before title",
+  "settings.tile_snap": "Snap folded icon to desktop grid",
   "settings.icon_source": "Icon",
   "settings.icon.folder": "Folder",
   "settings.icon.file": "File...",

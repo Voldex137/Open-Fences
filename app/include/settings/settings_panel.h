@@ -147,6 +147,8 @@ private:
     RECT m_collapseSeg[2] = {};    // collapse style: title bar / icon
     RECT m_titleIconSeg[2] = {};   // icon before the title: off / on
     RECT m_iconPickSeg[3] = {};    // icon source: folder / file / folder icon
+    RECT m_tileSnapSeg[2] = {};    // snap folded icon to the desktop grid: on / off
+    float m_tileSnapLblY = 0;
     RECT m_presetsBtn = {};
     float m_fillDirLblY = 0, m_autoFitLblY = 0, m_collapseLblY = 0, m_titleIconLblY = 0,
           m_iconPickLblY = 0;

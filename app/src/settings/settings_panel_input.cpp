@@ -189,6 +189,11 @@ void SettingsPanel::OnLButtonDown(int mx, int my) {
         break;
     case HIT_ICONPICK0 + 1: ChooseIconFile(false); break;
     case HIT_ICONPICK0 + 2: ChooseIconFile(true);  break;
+    case HIT_TILESNAP0: case HIT_TILESNAP0 + 1:
+        App().tileSnap = (id == HIT_TILESNAP0);
+        ApplyToFence();
+        Repaint();
+        break;
     case HIT_PRESETS:       ShowPresetsMenu();     break;
     case HIT_FILLDIR0: case HIT_FILLDIR0 + 1: {
         auto& app = App();
