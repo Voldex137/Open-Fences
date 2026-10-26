@@ -18,7 +18,7 @@ This repository is a fork of [weiweigogo/openFrence](https://github.com/weiweigo
 - **Frosted glass look** — Acrylic-style background: downsampled blur, saturation boost and noise, close to the native Windows 11 look
 - **Windows 11 style context menu** — custom-drawn Fluent Design menu with rounded corners, blur background and soft shadow
 - **System tray** — new fence, hide/show everything, language, start with Windows, desktop shortcut
-- **Persistent configuration** — fence layout, icon positions and appearance are saved to `%APPDATA%\openFences\config.json`
+- **Persistent configuration** — fence layout, icon positions and appearance are saved to `%APPDATA%\Open Fences\config.json`
 - **Multi-language UI** — English, Russian and Chinese; the language follows Windows by default, and a new one is just a JSON file (see [docs/LOCALIZATION.md](docs/LOCALIZATION.md))
 - **Tiny** — a single exe (~780 KB), no dependencies, no VC++ runtime needed, portable
 
@@ -81,7 +81,7 @@ openFences/
 
 ## Configuration
 
-Config file: `%APPDATA%\openFences\config.json`
+Config file: `%APPDATA%\Open Fences\config.json`
 
 ```json
 {

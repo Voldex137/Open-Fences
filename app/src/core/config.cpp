@@ -133,7 +133,7 @@ const std::wstring& Path() {
     static const std::wstring p = [] {
         wchar_t appdata[MAX_PATH] = {};
         SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appdata);
-        return std::wstring(appdata) + L"\\openFences\\config.json";
+        return std::wstring(appdata) + L"\\Open Fences\\config.json";
     }();
     return p;
 }
@@ -153,7 +153,7 @@ bool SaveNow() {
     // Indented on purpose: the tray menu invites users to open this file.
     std::string txt = j.dump(2);
 
-    // Ensure %APPDATA%\openFences exists.
+    // Ensure %APPDATA%\Open Fences exists.
     std::wstring path = Path();
     std::wstring dir = path.substr(0, path.find_last_of(L'\\'));
     CreateDirectoryW(dir.c_str(), nullptr);   // EEXIST is fine
@@ -240,10 +240,37 @@ void SetCollapseOnStart(bool on) {
     MarkDirty();
 }
 
+// Name of the autostart value under HKCU\...\Run.
+static const wchar_t* const kRunValue = L"Open Fences";
+
+// Versions before the rename kept everything under the name "openFences": move
+// the settings folder and the autostart entry to "Open Fences" once.
+void MigrateLegacyData() {
+    wchar_t appdata[MAX_PATH] = {};
+    SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appdata);
+    std::wstring oldDir = std::wstring(appdata) + L"\\openFences";
+    std::wstring newDir = std::wstring(appdata) + L"\\Open Fences";
+    if (GetFileAttributesW(oldDir.c_str()) != INVALID_FILE_ATTRIBUTES &&
+        GetFileAttributesW(newDir.c_str()) == INVALID_FILE_ATTRIBUTES)
+        MoveFileW(oldDir.c_str(), newDir.c_str());
+
+    static const wchar_t* const kRunKey = L"Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+    wchar_t cmd[MAX_PATH + 4] = {};
+    DWORD cb = sizeof(cmd) - sizeof(wchar_t);
+    if (RegGetValueW(HKEY_CURRENT_USER, kRunKey, L"openFences", RRF_RT_REG_SZ, nullptr, cmd, &cb) == ERROR_SUCCESS) {
+        HKEY key = nullptr;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, kRunKey, 0, KEY_SET_VALUE, &key) == ERROR_SUCCESS) {
+            RegSetValueExW(key, kRunValue, 0, REG_SZ, (const BYTE*)cmd, (DWORD)((wcslen(cmd) + 1) * sizeof(wchar_t)));
+            RegDeleteValueW(key, L"openFences");
+            RegCloseKey(key);
+        }
+    }
+}
+
 bool AutoStartEnabled() {
     return RegGetValueW(HKEY_CURRENT_USER,
         L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",
-        L"openFences", RRF_RT_REG_SZ, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
+        kRunValue, RRF_RT_REG_SZ, nullptr, nullptr, nullptr) == ERROR_SUCCESS;
 }
 
 void SetAutoStart(bool enable) {
@@ -257,11 +284,11 @@ void SetAutoStart(bool enable) {
         GetModuleFileNameW(nullptr, exe, MAX_PATH);
         // Quote the path — it may contain spaces (C:\Program Files\…).
         std::wstring cmd = std::wstring(L"\"") + exe + L"\"";
-        RegSetValueExW(key, L"openFences", 0, REG_SZ,
+        RegSetValueExW(key, kRunValue, 0, REG_SZ,
             (const BYTE*)cmd.c_str(),
             (DWORD)((cmd.size() + 1) * sizeof(wchar_t)));
     } else {
-        RegDeleteValueW(key, L"openFences");   // absent = disabled
+        RegDeleteValueW(key, kRunValue);   // absent = disabled
     }
     RegCloseKey(key);
 }

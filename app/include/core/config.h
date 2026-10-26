@@ -6,7 +6,7 @@
 
 /// App-wide persistence.
 ///
-/// State lives in ONE JSON file, %APPDATA%\openFences\config.json
+/// State lives in ONE JSON file, %APPDATA%\Open Fences\config.json
 /// (nlohmann/json): language, the "hide all fences" flag, and every fence
 /// with its layout, per-fence appearance and icons. The autostart flag is
 /// deliberately NOT in this file — Windows reads it from the HKCU Run key,
@@ -19,6 +19,11 @@ namespace Config {
 
 /// Full path of the settings file (%APPDATA%\openFences\config.json).
 const std::wstring& Path();
+
+/// One-time move of data written under the old name "openFences" (settings
+/// folder in %APPDATA%, autostart entry) to "Open Fences". Call first thing at
+/// startup, before anything reads the settings.
+void MigrateLegacyData();
 
 /// Serialize the current app state to Path(). Atomic: writes a .tmp file
 /// first, then renames it over the target, so a crash mid-write can never

@@ -33,7 +33,7 @@ Each file looks like this:
 2. Set `_meta.code` and `_meta.name`, translate the values (keep the keys unchanged).
 3. Rebuild (CMake picks the new file up automatically) — the file is embedded in `openfences.exe` and the language appears in the tray menu.
 
-To try a translation **without rebuilding**, put the file in `lang\` next to `openfences.exe` or in `%APPDATA%\openFences\lang\`. A file there replaces the embedded language with the same code.
+To try a translation **without rebuilding**, put the file in `lang\` next to `openfences.exe` or in `%APPDATA%\Open Fences\lang\`. A file there replaces the embedded language with the same code.
 
 ## Which language is used
 

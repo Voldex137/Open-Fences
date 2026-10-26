@@ -94,6 +94,16 @@ void MenuPopup::DrawMenu() {
                         brCheck.Get(), 1.5f * s);
         }
 
+        // Checked items that already show a glyph (the tray's toggles) get their check
+        // mark at the right edge, so "on" is visible; without a glyph the gutter holds it.
+        if (it.checked && i < icons.size() && icons[i]) {
+            float cx = W - padH - 14.0f * s, cy = top + rh * 0.5f;
+            t->DrawLine({ cx - 4.0f * s, cy },        { cx - 1.2f * s, cy + 2.8f * s },
+                        brCheck.Get(), 1.8f * s);
+            t->DrawLine({ cx - 1.2f * s, cy + 2.8f * s }, { cx + 4.2f * s, cy - 2.8f * s },
+                        brCheck.Get(), 1.8f * s);
+        }
+
         // Label (pre-measured layout; over-long text trims at the column edge)
         if (texts[i]) {
             DWRITE_TEXT_METRICS m = {};

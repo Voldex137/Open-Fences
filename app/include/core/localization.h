@@ -7,7 +7,7 @@
 //
 // Strings live in JSON files, one per language (resources/lang/<code>.json).
 // The files are embedded in the exe at build time, and any *.json found in
-// "<exe dir>\lang\" or "%APPDATA%\openFences\lang\" is loaded on top, so a
+// "<exe dir>\lang\" or "%APPDATA%\Open Fences\lang\" is loaded on top, so a
 // translation can be added or tested without rebuilding. English is the
 // reference language and the fallback for missing keys.
 namespace L10n {

@@ -18,7 +18,7 @@
 - **毛玻璃效果** — Acrylic 风格背景：降采样模糊 + 饱和度增强 + 噪点，贴近 Win11 原生观感
 - **Win11 风格右键菜单** — 自绘 Fluent Design 菜单，带圆角、毛玻璃背景、软阴影
 - **系统托盘常驻** — 托盘图标右键菜单：新建围栏、隐藏/显示全部、切换语言、开机自启、桌面快捷方式
-- **配置持久化** — 围栏布局、图标位置、外观设置自动保存至 `%APPDATA%\openFences\config.json`
+- **配置持久化** — 围栏布局、图标位置、外观设置自动保存至 `%APPDATA%\Open Fences\config.json`
 - **多语言** — 支持 English / 中文 / Русский；默认跟随 Windows 语言，新增语言只需添加一个 JSON 文件（见 [docs/LOCALIZATION.md](docs/LOCALIZATION.md)，英文）
 - **极轻量** — 单 exe（~780KB），无依赖，无需安装 VC++ 运行库，拷贝即用
 
@@ -81,7 +81,7 @@ openFences/
 
 ## 配置
 
-配置文件位置：`%APPDATA%\openFences\config.json`
+配置文件位置：`%APPDATA%\Open Fences\config.json`
 
 ```json
 {

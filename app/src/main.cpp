@@ -86,6 +86,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     HANDLE singleInstance = CreateMutexW(nullptr, TRUE, L"openFences_SingleInstance");
     if (!singleInstance || GetLastError() == ERROR_ALREADY_EXISTS) return 0;
 
+    Config::MigrateLegacyData();   // before anything reads the settings
     Desktop::EnableDpiAwareness();
     ComInit com;
     InitCommonControls();

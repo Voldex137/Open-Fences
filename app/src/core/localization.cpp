@@ -118,7 +118,7 @@ std::wstring ExeDir() {
 std::wstring AppDataDir() {
     wchar_t path[MAX_PATH];
     if (FAILED(SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, path))) return {};
-    return std::wstring(path) + L"\\openFences";
+    return std::wstring(path) + L"\\Open Fences";
 }
 
 int IndexOf(const std::wstring& code) {

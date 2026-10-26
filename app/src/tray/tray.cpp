@@ -177,7 +177,7 @@ void AddIcon(HWND owner) {
     nid.uCallbackMessage = kMessage;
     nid.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_APP));
     if (!nid.hIcon) nid.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
-    wcscpy_s(nid.szTip, L"openFences");
+    wcscpy_s(nid.szTip, L"Open Fences");
     Shell_NotifyIconW(NIM_ADD, &nid);
     // Bust the tray icon cache so a rebuilt exe with a new icon is picked up
     // immediately (Windows keys the cache by executable path).

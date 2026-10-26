@@ -7,7 +7,7 @@ An open-source alternative to Stardock Fences: a Windows desktop icon grouping t
 - **Language:** C++17 (MSVC v141 toolchain, VS2017), `CMAKE_CXX_STANDARD 20`
 - **Windows:** native Win32 `WS_CHILD` windows attached under explorer's `SysListView32` desktop icon list
 - **Rendering:** Direct2D + DirectWrite + WIC, `WS_EX_LAYERED` + `UpdateLayeredWindow` pipeline
-- **Serialization:** nlohmann/json, config file `%APPDATA%\openFences\config.json`
+- **Serialization:** nlohmann/json, config file `%APPDATA%\Open Fences\config.json`
 - **Build:** CMake 3.20+, MSVC (VS2017 generator), x64, `/MT` statically linked CRT
 - **Output:** a single exe (~780 KB), no dependencies, portable
 
