@@ -2,6 +2,7 @@
 #include "core/config.h"
 #include "core/localization.h"
 #include "core/presets.h"
+#include "shell/shell_integration.h"
 #include "core/appearance_json.h"
 #include "shell/desktop_host.h"
 #include "shell/desktop_icons.h"
@@ -40,6 +41,7 @@ FenceWindow* CreateNew() {
     g_fences.push_back(std::make_unique<FenceWindow>(data));
     FenceWindow* fence = g_fences.back().get();
     if (Presets::HasDefault()) fence->ApplyStyle(Presets::Default());
+    ShellIntegration::Refresh();
     DesktopIcons::ParkIfHidden(fence->Hwnd());
     Config::MarkDirty();
     return fence;
@@ -51,6 +53,7 @@ void Remove(HWND hwnd) {
     if (it == g_fences.end()) return;
     (*it)->ReturnStoredItemsToDesktop();   // the fence is going away; its files return to the desktop
     g_fences.erase(it);
+    ShellIntegration::Refresh();
     Config::MarkDirty();
 }
 

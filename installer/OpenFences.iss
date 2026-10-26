@@ -58,5 +58,8 @@ Name: "{autodesktop}\Open Fences"; Filename: "{app}\openfences.exe"; Tasks: desk
 Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "Open Fences"; \
     ValueData: """{app}\openfences.exe"""; Tasks: autostart; Flags: uninsdeletevalue
 
+[UninstallRun]
+Filename: "{app}\openfences.exe"; Parameters: "--unregister-shell"; Flags: runhidden; RunOnceId: "UnregisterShell"
+
 [Run]
 Filename: "{app}\openfences.exe"; Description: "{cm:LaunchProgram,Open Fences}"; Flags: nowait postinstall skipifsilent

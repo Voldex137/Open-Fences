@@ -9,6 +9,7 @@
 #include "render/render.h"
 #include "shell/desktop_host.h"
 #include "shell/desktop_icons.h"
+#include "shell/shell_integration.h"
 #include "tray/tray.h"
 
 namespace {
@@ -65,6 +66,12 @@ LRESULT CALLBACK OwnerWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         if (wp == kTimerDesktopWatch) OnDesktopWatchTimer();
         else if (wp == kTimerConfigSave) Config::SaveNow();
         return 0;
+    case WM_COPYDATA: {   // a command forwarded by a second process (Explorer menu entry)
+        auto* cds = (COPYDATASTRUCT*)lp;
+        if (cds && cds->dwData == 1 && cds->lpData && cds->cbData >= sizeof(wchar_t))
+            ShellIntegration::Execute(std::wstring((const wchar_t*)cds->lpData));
+        return TRUE;
+    }
     case WM_FENCE_DELETE:
         FenceManager::Remove((HWND)wp);
         return 0;
@@ -83,6 +90,16 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     // A second instance would draw the fences twice on the same desktop; a named
     // mutex allows only one (the system releases it if the process crashes, so it
     // cannot leave a stale lock).
+    // Instructions from the Explorer menu entries come first: "--unregister-shell" (the
+    // uninstaller), and commands a running instance should carry out for us.
+    if (wcsstr(GetCommandLineW(), L"--unregister-shell")) {
+        ShellIntegration::Unregister();
+        return 0;
+    }
+    ShellIntegration::Command command;
+    bool hasCommand = ShellIntegration::ParseCommandLine(command);
+    if (hasCommand && ShellIntegration::ForwardToRunningInstance(command)) return 0;
+
     HANDLE singleInstance = CreateMutexW(nullptr, TRUE, L"openFences_SingleInstance");
     if (!singleInstance || GetLastError() == ERROR_ALREADY_EXISTS) return 0;
 
@@ -113,6 +130,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     // first run, an unreadable config and an empty saved list all start with no
     // fences; the user creates them from the tray menu.
     Config::LoadApp();
+    if (hasCommand) ShellIntegration::Execute(command.text);   // started by an Explorer menu entry
+    ShellIntegration::Refresh();   // panel list / language / exe path may have changed
 
     // If explorer's icons are hidden right now (we restarted, or the user
     // hid them before launching us), park immediately instead of sitting

@@ -6,6 +6,7 @@
 #include "core/app_paths.h"
 #include "core/appearance_json.h"
 #include "core/presets.h"
+#include "shell/shell_integration.h"
 #include <nlohmann/json.hpp>
 #include <shlobj.h>     // SHGetFolderPathW (CSIDL_APPDATA)
 #include <shellapi.h>   // ShellExecuteW (reveal in Explorer)
@@ -145,6 +146,7 @@ bool SaveNow() {
     j["hideAll"]  = FenceManager::AllHidden();
     j["styles"]   = Presets::ToJson();
     j["collapseOnStart"] = g_collapseOnStart;
+    j["shellMenu"] = ShellIntegration::Enabled();
     json fences = json::array();
     for (const auto& f : FenceManager::All())
         fences.push_back(SaveFence(*f));
@@ -211,6 +213,8 @@ bool LoadApp() {
     }
 
     g_collapseOnStart = j.value("collapseOnStart", false);
+    if (j.contains("shellMenu") && j["shellMenu"].is_boolean())
+        ShellIntegration::SetEnabled(j["shellMenu"].get<bool>());
     if (j.contains("styles")) Presets::FromJson(j["styles"]);   // before the fences: they may copy the defaults
 
     if (j.contains("fences") && j["fences"].is_array())

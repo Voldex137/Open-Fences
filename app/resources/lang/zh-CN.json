@@ -11,6 +11,9 @@
   "tray.config_location": "配置文件位置",
   "tray.create_shortcut": "创建桌面快捷方式",
   "tray.storage_folder": "存放文件夹...",
+  "shell.new_panel": "新建围栏",
+  "shell.move_to_panel": "移到围栏",
+  "tray.shell_menu": "资源管理器右键菜单项",
   "tray.collapse_on_start": "启动时折叠面板",
   "tray.exit": "退出",
 

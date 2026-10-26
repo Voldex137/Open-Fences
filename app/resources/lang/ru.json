@@ -11,6 +11,9 @@
   "tray.config_location": "Расположение файла настроек",
   "tray.create_shortcut": "Создать ярлык на рабочем столе",
   "tray.storage_folder": "Папка для файлов...",
+  "shell.new_panel": "Создать панель",
+  "shell.move_to_panel": "Перенести в панель",
+  "tray.shell_menu": "Пункты в меню Проводника",
   "tray.collapse_on_start": "Сворачивать панели при запуске",
   "tray.exit": "Выход",
 

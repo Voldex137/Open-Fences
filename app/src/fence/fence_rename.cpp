@@ -1,5 +1,6 @@
 #include "fence/fence_window.h"
 #include "core/config.h"
+#include "shell/shell_integration.h"
 #include <shlwapi.h>
 
 void FenceWindow::EnterRename() {
@@ -24,6 +25,7 @@ void FenceWindow::ExitRename(bool commit) {
     m_renaming = false;
     if (commit && m_renameBuf != m_title) {
         m_title = m_renameBuf;
+        ShellIntegration::Refresh();   // the panel name is in the Explorer menu
         Config::MarkDirty();
     }
     KillTimer(m_hwnd, 1);

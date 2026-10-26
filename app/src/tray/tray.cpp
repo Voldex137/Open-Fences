@@ -9,6 +9,7 @@
 #include "render/menu_icons.h"
 #include "settings/settings_panel.h"
 #include "shell/desktop_icons.h"
+#include "shell/shell_integration.h"
 
 #include <shellapi.h>
 #include <shlobj.h>
@@ -31,6 +32,7 @@ enum TrayCmd : int {
     kCmdStorageFolder     = 115,
     kCmdDefaultSettings   = 116,
     kCmdCollapseOnStart   = 117,
+    kCmdShellMenu         = 118,
     kCmdLanguageBase      = 200,   // one command per loaded language
 };
 
@@ -105,6 +107,8 @@ HMENU BuildMenu() {
         kCmdAutoStart, L10n::Tr("tray.start_with_windows"));
     AppendMenuW(menu, MF_STRING | (Config::CollapseOnStart() ? MF_CHECKED : 0),
         kCmdCollapseOnStart, L10n::Tr("tray.collapse_on_start"));
+    AppendMenuW(menu, MF_STRING | (ShellIntegration::Enabled() ? MF_CHECKED : 0),
+        kCmdShellMenu, L10n::Tr("tray.shell_menu"));
     AppendMenuW(menu, MF_STRING, kCmdConfigLocation, L10n::Tr("tray.config_location"));
     AppendMenuW(menu, MF_STRING, kCmdStorageFolder, L10n::Tr("tray.storage_folder"));
     AppendMenuW(menu, MF_STRING, kCmdDefaultSettings, L10n::Tr("tray.default_settings"));
@@ -148,11 +152,15 @@ void Execute(HWND owner, int cmd) {
         DesktopIcons::Toggle(FenceManager::Handles());
     } else if (cmd >= kCmdLanguageBase && cmd < kCmdLanguageBase + languageCount) {
         L10n::SetLanguage(L10n::Languages()[cmd - kCmdLanguageBase].code);
+        ShellIntegration::Refresh();   // menu entries are written in the UI language
         Config::MarkDirty();
     } else if (cmd == kCmdAutoStart) {
         Config::SetAutoStart(!Config::AutoStartEnabled());
     } else if (cmd == kCmdCollapseOnStart) {
         Config::SetCollapseOnStart(!Config::CollapseOnStart());
+    } else if (cmd == kCmdShellMenu) {
+        ShellIntegration::SetEnabled(!ShellIntegration::Enabled());
+        Config::MarkDirty();
     } else if (cmd == kCmdConfigLocation) {
         Config::RevealFile();
     } else if (cmd == kCmdStorageFolder) {
