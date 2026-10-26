@@ -215,6 +215,8 @@ bool LoadApp() {
             L10n::SetLanguage(jl.get<int>() == 1 ? L"zh-CN" : L"en");
     }
 
+    if (j.contains("storageFolder") && j["storageFolder"].is_string())
+        Storage::SetFolder(FromUtf8(j["storageFolder"].get<std::string>()));
     g_collapseOnStart = j.value("collapseOnStart", false);
     if (j.contains("shellMenu") && j["shellMenu"].is_boolean())
         ShellIntegration::SetEnabled(j["shellMenu"].get<bool>());
@@ -229,8 +231,6 @@ bool LoadApp() {
 
     // An empty array is a legitimate state (the user deleted every fence) —
     // only a MISSING file triggers the defaults, so honor it.
-    if (j.contains("storageFolder") && j["storageFolder"].is_string())
-        Storage::SetFolder(FromUtf8(j["storageFolder"].get<std::string>()));
     if (j.value("hideAll", false)) FenceManager::SetAllHidden(true);
     return true;
 }
