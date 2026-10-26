@@ -48,9 +48,17 @@ FenceWindow::FenceWindow(const FenceData& data)
     if (FAILED(RegisterDragDrop(m_hwnd, dt)))
         DragAcceptFiles(m_hwnd, TRUE);   // fallback: filesystem paths only
     dt->Release();
+    if (!data.visible) return;   // Reveal() does the first display later
     ShowWindow(m_hwnd, SW_SHOW);
     Redraw();
     CaptureBackdrop();   // initial frosted-glass snapshot
+}
+
+void FenceWindow::Reveal() {
+    if (!m_hwnd || m_appHidden) return;
+    ShowWindow(m_hwnd, SW_SHOW);
+    Redraw();
+    CaptureBackdrop();
 }
 
 FenceWindow::~FenceWindow() {

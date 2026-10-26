@@ -19,7 +19,7 @@ struct IContextMenu;
 struct FenceData {
     std::wstring id, title;
     int x, y, w, h;
-    bool visible = true;
+    bool visible = true;    // false: the window stays hidden until Reveal() (state is restored first)
     std::wstring sourceFolder;
     int sortCol = 0;        // 0=Name, 1=DateModified, 2=Size, 3=Type
     bool sortAsc = true;
@@ -32,6 +32,9 @@ public:
 
     HWND Hwnd() const { return m_hwnd; }
     void Show();
+    // First display of a window created with visible = false, once its saved state
+    // (icons, collapsed) is applied, so it never flashes in the wrong shape.
+    void Reveal();
     void Hide();
     void Redraw();
     void SetIcons(const std::vector<IconEntry>& entries);

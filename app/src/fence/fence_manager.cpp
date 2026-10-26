@@ -65,6 +65,7 @@ void Rebuild() {
         saved.push_back({ f->GetData(), f->Icons(), f->IsCollapsed(), f->GetRender().Appearance() });
     g_fences.clear();   // dtors see the dead HWNDs and skip DestroyWindow
     for (auto& s : saved) {
+        s.data.visible = false;   // revealed below, already in its final state
         auto f = std::make_unique<FenceWindow>(s.data);
         // The new window starts with the built-in look: put the user's back.
         AppearanceJson::CopyStyle(f->GetRender().Appearance(), s.look);
@@ -77,6 +78,7 @@ void Rebuild() {
         }
         if (s.collapsed) f->ToggleCollapse();
         if (g_allHidden) f->Hide();
+        f->Reveal();
         g_fences.push_back(std::move(f));
     }
     DesktopIcons::EndRebuild(Handles());

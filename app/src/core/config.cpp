@@ -79,6 +79,7 @@ void LoadFence(const json& jf) {
     fd.y     = jf.value("y", 0);
     fd.w     = jf.value("w", 0);
     fd.h     = jf.value("h", 0);
+    fd.visible = false;   // shown once the saved state is applied (no flash of the expanded fence)
     if (fd.w < 40 || fd.h < 20) return;   // degenerate entry — skip
 
     auto f = std::make_unique<FenceWindow>(fd);
@@ -123,6 +124,7 @@ void LoadFence(const json& jf) {
     if (jf.value("collapsed", false) || g_collapseOnStart || app.collapseStyle == 1)
         f->ToggleCollapse();
 
+    f->Reveal();
     FenceManager::Add(std::move(f));
 }
 
