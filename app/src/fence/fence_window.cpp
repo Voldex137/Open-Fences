@@ -341,7 +341,11 @@ void FenceWindow::CaptureBackdrop() {
 }
 
 FenceData FenceWindow::GetData() const {
-    return { m_id, m_title, m_x, m_y, (int)m_render->Width(), (int)m_render->Height(), true, m_sourceFolder, m_sortColumn, m_sortAscending };
+    // A collapsed fence reports the size it expands back to, not the folded
+    // size: this is what gets saved, and what a restart or rebuild recreates.
+    int w = m_collapsed && m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
+    int h = m_collapsed && m_expandedH > 0 ? m_expandedH : (int)m_render->Height();
+    return { m_id, m_title, m_x, m_y, w, h, true, m_sourceFolder, m_sortColumn, m_sortAscending };
 }
 
 // ── Sort ──
