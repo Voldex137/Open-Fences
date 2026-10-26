@@ -9,6 +9,7 @@
 #include "render/render.h"
 #include "render/list_scrollbar.h"
 #include "fence/icon_grid.h"
+#include "fence/text_edit.h"
 
 struct IContextMenu;
 
@@ -281,12 +282,10 @@ private:
     DWORD m_focusAttached = 0;
 
     bool m_renaming = false;
-    std::wstring m_renameBuf;
+    TextEdit m_titleEdit;            // the title while it is being renamed
     int  m_renameIcon = -1;           // icon being renamed (-1 = none)
-    std::wstring m_iconRenameBuf;     // base name (extension kept separately)
+    TextEdit m_iconEdit;              // base name being renamed (extension kept separately)
     std::wstring m_iconRenameExt;
-    size_t m_iconRenameCaret = 0;     // insertion point inside m_iconRenameBuf
-    bool m_iconRenamePristine = false; // buffer not edited yet → first input
                                        // replaces it (Explorer select-all)
     bool m_cursorVisible = false;
     UINT_PTR m_cursorTimer = 0;
@@ -321,11 +320,15 @@ private:
 
     // ── Search / filter (mapped fences only) ──
     bool m_loading = false;   // shown during folder enumeration
-    std::wstring m_searchText;
+    TextEdit m_searchEdit;
     bool m_searchFocused = false;
     std::vector<int>  m_filterIdx;
     std::vector<BYTE> m_filterBits;  // O(1) visibility for marquee/drag
-    bool SearchActive() const { return !m_searchText.empty(); }
+    bool SearchActive() const { return !m_searchEdit.Empty(); }
+    // Editing keys shared by the title rename, icon rename and search fields:
+    // arrows (Shift selects, Ctrl jumps words), Home/End, Backspace/Delete, Ctrl+A/C/X/V.
+    // Returns true when the key belonged to the field.
+    bool EditKey(TextEdit& edit, WPARAM vk);
     int  VisibleCount() const;
     void RebuildFilter();
     void RelayoutFiltered();

@@ -82,9 +82,7 @@ void FenceWindow::Hide() { m_appHidden = true;  ShowWindow(m_hwnd, SW_HIDE); }
 
 void FenceWindow::Redraw() {
     ClampListScroll();
-    std::wstring displayTitle = m_renaming
-        ? (m_renameBuf + (m_cursorVisible ? L"|" : L""))
-        : m_title;
+    const std::wstring& displayTitle = m_renaming ? m_titleEdit.Text() : m_title;
     // The marquee band only exists once the gesture passes the click
     // threshold — a plain click must not flash it.
     RECT marq = {};
@@ -96,15 +94,27 @@ void FenceWindow::Redraw() {
     // actually moved), and the rubber band while one is live.
     FenceViewState view;
     view.filter     = SearchActive() ? &m_filterIdx : nullptr;
-    view.searchText = IsMapped() ? &m_searchText : nullptr;
+    view.searchText = IsMapped() ? &m_searchEdit.Text() : nullptr;
     view.caretOn    = m_searchFocused && m_cursorVisible;
+    view.blink      = m_cursorVisible;
+    view.searchCaret    = (int)m_searchEdit.Caret();
+    view.searchSelBegin = (int)m_searchEdit.SelBegin();
+    view.searchSelEnd   = (int)m_searchEdit.SelEnd();
+    if (m_renaming) {
+        view.titleEditing  = true;
+        view.titleCaret    = (int)m_titleEdit.Caret();
+        view.titleSelBegin = (int)m_titleEdit.SelBegin();
+        view.titleSelEnd   = (int)m_titleEdit.SelEnd();
+    }
     view.loading    = m_loading;
     std::wstring iconRenameDisplay;
     if (m_renameIcon >= 0) {
-        iconRenameDisplay = m_iconRenameBuf + m_iconRenameExt;
+        iconRenameDisplay = m_iconEdit.Text() + m_iconRenameExt;
         view.renameIcon = m_renameIcon;
         view.iconRenameText = &iconRenameDisplay;
-        view.renameCaret = m_cursorVisible ? (int)m_iconRenameCaret : -1;
+        view.renameCaret = m_cursorVisible ? (int)m_iconEdit.Caret() : -1;
+        view.renameSelBegin = (int)m_iconEdit.SelBegin();
+        view.renameSelEnd = (int)m_iconEdit.SelEnd();
     }
     m_render->DrawFence(displayTitle, m_icons, m_renaming, m_dragOver, m_collapsed,
                         m_collapsed ? -1 : m_hoverIcon,

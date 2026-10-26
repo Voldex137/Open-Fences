@@ -51,7 +51,7 @@ void FenceWindow::RebuildFilter() {
     m_filterBits.assign(m_icons.size(), 0);
     if (SearchActive()) {
         for (int i = 0; i < (int)m_icons.size(); i++) {
-            if (StrStrIW(m_icons[i].name.c_str(), m_searchText.c_str())) {
+            if (StrStrIW(m_icons[i].name.c_str(), m_searchEdit.Text().c_str())) {
                 m_filterIdx.push_back(i);
                 m_filterBits[i] = 1;
             }
@@ -80,7 +80,7 @@ void FenceWindow::FocusSearch() {
 }
 
 void FenceWindow::ClearSearch() {
-    m_searchText.clear();
+    m_searchEdit.Clear();
     if (m_searchFocused) {
         m_searchFocused = false;
         m_cursorVisible = false;

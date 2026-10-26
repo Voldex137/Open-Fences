@@ -238,8 +238,46 @@ void RenderContext::DrawTitleText(const Frame& f) {
         left += icon + kTitleTextPad * 0.6f;
     }
     D2D1_RECT_F textRect{ left, 0, right, f.titleH };
+    if (f.view && f.view->titleEditing) {
+        DrawEditText(f, f.title, m_titleFormat.Get(), textRect, m_textBrush.Get(),
+                     D2D1_DRAW_TEXT_OPTIONS_CLIP, f.view->blink ? f.view->titleCaret : -1,
+                     f.view->titleSelBegin, f.view->titleSelEnd);
+        return;
+    }
     f.ctx.DrawText(f.title.c_str(), (UINT32)f.title.size(), m_titleFormat.Get(), textRect,
                    m_textBrush.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
+}
+
+void RenderContext::DrawEditText(const Frame& f, const std::wstring& text, IDWriteTextFormat* fmt,
+                                 const D2D1_RECT_F& rect, ID2D1Brush* textBrush,
+                                 D2D1_DRAW_TEXT_OPTIONS opts, int caret, int selBegin, int selEnd) {
+    ComPtr<IDWriteTextLayout> layout;
+    if (FAILED(m_dwFactory->CreateTextLayout(text.c_str(), (UINT32)text.size(), fmt,
+                                             rect.right - rect.left, rect.bottom - rect.top, &layout)) || !layout) {
+        f.ctx.DrawText(text.c_str(), (UINT32)text.size(), fmt, rect, textBrush, opts);
+        return;
+    }
+    if (selEnd > selBegin) {
+        DWRITE_HIT_TEST_METRICS hits[8];
+        UINT32 count = 0;
+        layout->HitTestTextRange((UINT32)selBegin, (UINT32)(selEnd - selBegin), rect.left, rect.top,
+                                 hits, 8, &count);
+        auto sel = MakeBrush(f.ctx, D2D1::ColorF(m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.50f));
+        if (sel)
+            for (UINT32 i = 0; i < count && i < 8; i++)
+                f.ctx.FillRectangle(D2D1_RECT_F{ hits[i].left, hits[i].top, hits[i].left + hits[i].width,
+                                                 hits[i].top + hits[i].height }, sel.Get());
+    }
+    f.ctx.DrawTextLayout(D2D1_POINT_2F{ rect.left, rect.top }, layout.Get(), textBrush, opts);
+    if (caret >= 0) {
+        float px = 0, py = 0;
+        DWRITE_HIT_TEST_METRICS hm = {};
+        if (SUCCEEDED(layout->HitTestTextPosition((UINT32)caret, FALSE, &px, &py, &hm))) {
+            auto cb = MakeBrush(f.ctx, D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.85f));
+            if (cb) f.ctx.FillRectangle(D2D1_RECT_F{ rect.left + px, rect.top + py, rect.left + px + 1.5f,
+                                                     rect.top + py + hm.height }, cb.Get());
+        }
+    }
 }
 
 // Collapse/expand chevron in the title bar's top-right corner. Points the way
@@ -310,26 +348,16 @@ float RenderContext::DrawSearchBox(const Frame& f) {
         const wchar_t* hintText = L10n::Tr("fence.search_hint");
         if (hint) f.ctx.DrawText(hintText, (UINT32)wcslen(hintText), m_listFormat.Get(), textRect,
                                  hint.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
-        m_searchTextW = 0.0f;   // caret at start of field
     } else {
-        f.ctx.DrawText(view->searchText->c_str(), (UINT32)view->searchText->size(),
-                       m_listFormat.Get(), textRect, m_iconTextBrush.Get(),
-                       D2D1_DRAW_TEXT_OPTIONS_CLIP);
-        if (*view->searchText != m_searchTextCache) {
-            m_searchTextCache = *view->searchText;
-            DWRITE_TEXT_METRICS tm = {};
-            if (MeasureText(m_dwFactory.Get(), view->searchText->c_str(), view->searchText->size(),
-                            m_listFormat.Get(), 2000.0f, sbh, tm))
-                m_searchTextW = tm.width;
-        }
+        DrawEditText(f, *view->searchText, m_listFormat.Get(), textRect, m_iconTextBrush.Get(),
+                     D2D1_DRAW_TEXT_OPTIONS_CLIP, view->caretOn ? view->searchCaret : -1,
+                     view->searchSelBegin, view->searchSelEnd);
     }
 
-    // Caret (blinks regardless of whether text is present)
-    if (view->caretOn) {
-        float cx = tx + m_searchTextW + 1.0f;
+    // Caret in an empty field (the placeholder is showing): at the start of the text area.
+    if (view->caretOn && view->searchText->empty()) {
         auto caret = MakeBrush(f.ctx, D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.7f));
-        if (caret) f.ctx.FillRectangle(D2D1_RECT_F{ cx, sy + 4.0f, cx + 1.5f, sy + sbh - 4.0f },
-                                       caret.Get());
+        if (caret) f.ctx.FillRectangle(D2D1_RECT_F{ tx, sy + 4.0f, tx + 1.5f, sy + sbh - 4.0f }, caret.Get());
     }
     return f.titleH + sh;
 }
@@ -423,20 +451,8 @@ void RenderContext::DrawListRow(const Frame& f, int i, float bodyTop, const Icon
         auto ring = MakeBrush(f.ctx, D2D1::ColorF(m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.9f));
         if (back) f.ctx.FillRoundedRectangle(box, back.Get());
         if (ring) f.ctx.DrawRoundedRectangle(box, ring.Get(), 1.0f);
-        f.ctx.DrawText(view.iconRenameText->c_str(), (UINT32)view.iconRenameText->size(), listFmt,
-                       textRect, m_textBrush.Get(), kLabelOptions);
-        if (view.renameCaret >= 0) {
-            std::wstring prefix = view.iconRenameText->substr(0, (size_t)view.renameCaret);
-            DWRITE_TEXT_METRICS tm = {};
-            float prefixW = 0.0f;
-            if (MeasureText(m_dwFactory.Get(), prefix.c_str(), prefix.size(), listFmt,
-                            m.cellW - m.listIconSize - 8.0f, m.cellH, tm))
-                prefixW = tm.width;
-            auto caret = MakeBrush(f.ctx, D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.85f));
-            if (caret) f.ctx.FillRectangle(
-                D2D1_RECT_F{ tx + prefixW, clipTop + 2.0f, tx + prefixW + 1.5f, clipTop + clipH - 2.0f },
-                caret.Get());
-        }
+        DrawEditText(f, *view.iconRenameText, listFmt, textRect, m_textBrush.Get(), kLabelOptions,
+                     view.renameCaret, view.renameSelBegin, view.renameSelEnd);
     } else if (st.dragged) {
         auto faded = MakeBrush(f.ctx, D2D1::ColorF(m_app.iconText[0], m_app.iconText[1],
                                                    m_app.iconText[2], m_app.iconText[3] * glyphAlpha));
@@ -492,23 +508,10 @@ void RenderContext::DrawGridCell(const Frame& f, int i, const IconMetrics& m, co
         auto ring = MakeBrush(f.ctx, D2D1::ColorF(m_app.accent[0], m_app.accent[1], m_app.accent[2], 0.9f));
         if (back) f.ctx.FillRoundedRectangle(box, back.Get());
         if (ring) f.ctx.DrawRoundedRectangle(box, ring.Get(), 1.0f);
-        f.ctx.DrawText(view.iconRenameText->c_str(), (UINT32)view.iconRenameText->size(),
-                       m_iconFormat.Get(), textRect, m_textBrush.Get(), kLabelOptions);
-        if (view.renameCaret >= 0) {
-            // The label format centers the text in the full cell width; the
-            // caret lands right after the typed prefix.
-            std::wstring prefix = view.iconRenameText->substr(0, (size_t)view.renameCaret);
-            DWRITE_TEXT_METRICS pm = {};
-            float prefixW = 0.0f;
-            if (MeasureText(m_dwFactory.Get(), prefix.c_str(), prefix.size(), m_iconFormat.Get(),
-                            m.cellW, m.cellH, pm))
-                prefixW = pm.width;
-            float caretX = cx + (m.cellW - textW) * 0.5f + prefixW;
-            auto caret = MakeBrush(f.ctx, D2D1::ColorF(1.0f, 1.0f, 1.0f, 0.85f));
-            if (caret) f.ctx.FillRectangle(
-                D2D1_RECT_F{ caretX, textRect.top + 1.0f, caretX + 1.5f, textRect.top + textH + 1.0f },
-                caret.Get());
-        }
+        // The label format centres the text in the full cell width; the layout puts the
+        // selection and caret exactly where the glyphs are.
+        DrawEditText(f, *view.iconRenameText, m_iconFormat.Get(), textRect, m_textBrush.Get(), kLabelOptions,
+                     view.renameCaret, view.renameSelBegin, view.renameSelEnd);
     } else if (st.dragged) {
         auto faded = MakeBrush(f.ctx, D2D1::ColorF(m_app.iconText[0], m_app.iconText[1],
                                                    m_app.iconText[2], m_app.iconText[3] * glyphAlpha));

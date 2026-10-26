@@ -47,6 +47,7 @@ add_executable(openfences
     app/src/fence/fence_layout.cpp
     app/src/fence/icon_grid.cpp
     app/src/fence/stack_chain.cpp
+    app/src/fence/text_edit.cpp
     app/src/fence/fence_stack.cpp
     app/src/fence/icon_sort.cpp
     app/src/fence/fence_selection.cpp
@@ -175,4 +176,8 @@ if(OPENFENCES_BUILD_TESTS)
     add_executable(stack_chain_test tests/stack_chain_test.cpp app/src/fence/stack_chain.cpp)
     target_include_directories(stack_chain_test PRIVATE app/include tests)
     add_test(NAME stack_chain COMMAND stack_chain_test)
+
+    add_executable(text_edit_test tests/text_edit_test.cpp app/src/fence/text_edit.cpp)
+    target_include_directories(text_edit_test PRIVATE app/include tests)
+    add_test(NAME text_edit COMMAND text_edit_test)
 endif()

@@ -77,6 +77,13 @@ struct FenceViewState {
     int renameIcon = -1;
     const std::wstring* iconRenameText = nullptr;
     int renameCaret = -1;
+    int renameSelBegin = 0, renameSelEnd = 0;   // selected range inside iconRenameText
+    // Caret blink phase, plus the title rename (the title text is the DrawFence
+    // argument) and the search box: caret and selection offsets into their text.
+    bool blink = false;
+    bool titleEditing = false;
+    int titleCaret = 0, titleSelBegin = 0, titleSelEnd = 0;
+    int searchCaret = 0, searchSelBegin = 0, searchSelEnd = 0;
 };
 
 class RenderContext {
@@ -165,6 +172,11 @@ private:
     void DrawTitleBar(const Frame& f);
     void DrawTopHighlight(const Frame& f);
     void DrawTitleText(const Frame& f);
+    // Text with an optional selection highlight and caret (caret < 0 = none). The
+    // layout does the measuring, so centred and right-aligned text edit correctly.
+    void DrawEditText(const Frame& f, const std::wstring& text, IDWriteTextFormat* fmt,
+                      const D2D1_RECT_F& rect, ID2D1Brush* textBrush, D2D1_DRAW_TEXT_OPTIONS opts,
+                      int caret, int selBegin, int selEnd);
     void DrawChevron(const Frame& f, bool collapsedLook);
     float DrawSearchBox(const Frame& f);          // returns the top of the body below it
     void DrawBodyNotice(const Frame& f, float bodyTop, const wchar_t* text);
@@ -228,6 +240,4 @@ private:
     float m_selLabelW = 0.0f, m_selLabelH = 0.0f;
 
     // Search box text width (cached per text value to avoid per-frame layout).
-    std::wstring m_searchTextCache;
-    float m_searchTextW = 0.0f;
 };
