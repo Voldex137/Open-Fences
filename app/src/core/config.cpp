@@ -18,6 +18,9 @@ using json = nlohmann::json;
 
 namespace {
 
+// Global setting: every fence starts folded, whatever state it was left in.
+bool g_collapseOnStart = false;
+
 // nlohmann stores narrow strings as UTF-8; the app works in UTF-16.
 std::string ToUtf8(const std::wstring& w) {
     if (w.empty()) return {};
@@ -115,7 +118,9 @@ void LoadFence(const json& jf) {
 
     // Collapse LAST: while expanded the window still has its saved height,
     // so ToggleCollapse remembers the right m_expandedH.
-    if (jf.value("collapsed", false)) f->ToggleCollapse();
+    // Folder-mode fences (they fold back after a click elsewhere) always start folded.
+    if (jf.value("collapsed", false) || g_collapseOnStart || app.collapseStyle == 1)
+        f->ToggleCollapse();
 
     FenceManager::Add(std::move(f));
 }
@@ -140,6 +145,7 @@ bool SaveNow() {
     j["storageFolder"] = ToUtf8(Storage::Folder());
     j["hideAll"]  = FenceManager::AllHidden();
     j["styles"]   = Presets::ToJson();
+    j["collapseOnStart"] = g_collapseOnStart;
     json fences = json::array();
     for (const auto& f : FenceManager::All())
         fences.push_back(SaveFence(*f));
@@ -205,6 +211,7 @@ bool LoadApp() {
             L10n::SetLanguage(jl.get<int>() == 1 ? L"zh-CN" : L"en");
     }
 
+    g_collapseOnStart = j.value("collapseOnStart", false);
     if (j.contains("styles")) Presets::FromJson(j["styles"]);   // before the fences: they may copy the defaults
 
     if (j.contains("fences") && j["fences"].is_array())
@@ -224,6 +231,13 @@ void RevealFile() {
     std::wstring args = L"/select,\"" + Path() + L"\"";
     ShellExecuteW(nullptr, L"open", L"explorer.exe", args.c_str(),
                   nullptr, SW_SHOWNORMAL);
+}
+
+bool CollapseOnStart() { return g_collapseOnStart; }
+
+void SetCollapseOnStart(bool on) {
+    g_collapseOnStart = on;
+    MarkDirty();
 }
 
 bool AutoStartEnabled() {

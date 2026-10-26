@@ -41,6 +41,11 @@ bool LoadApp();
 /// the tray menu's "config file location" entry.
 void RevealFile();
 
+/// Global option: every fence starts folded after a restart instead of keeping
+/// the state it was closed in.
+bool CollapseOnStart();
+void SetCollapseOnStart(bool on);
+
 /// Autostart with Windows: presence of the "openFences" value under
 /// HKCU\Software\Microsoft\Windows\CurrentVersion\Run (data = quoted exe
 /// path). SetAutoStart(false) simply deletes the value.

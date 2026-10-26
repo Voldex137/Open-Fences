@@ -11,6 +11,7 @@
   "tray.config_location": "Расположение файла настроек",
   "tray.create_shortcut": "Создать ярлык на рабочем столе",
   "tray.storage_folder": "Папка для файлов...",
+  "tray.collapse_on_start": "Сворачивать панели при запуске",
   "tray.exit": "Выход",
 
   "fence.new_title": "Новая панель",

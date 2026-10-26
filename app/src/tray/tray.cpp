@@ -30,6 +30,7 @@ enum TrayCmd : int {
     kCmdCreateShortcut    = 114,
     kCmdStorageFolder     = 115,
     kCmdDefaultSettings   = 116,
+    kCmdCollapseOnStart   = 117,
     kCmdLanguageBase      = 200,   // one command per loaded language
 };
 
@@ -102,6 +103,8 @@ HMENU BuildMenu() {
     AppendMenuW(menu, MF_POPUP, (UINT_PTR)langMenu, L10n::Tr("tray.language"));
     AppendMenuW(menu, MF_STRING | (Config::AutoStartEnabled() ? MF_CHECKED : 0),
         kCmdAutoStart, L10n::Tr("tray.start_with_windows"));
+    AppendMenuW(menu, MF_STRING | (Config::CollapseOnStart() ? MF_CHECKED : 0),
+        kCmdCollapseOnStart, L10n::Tr("tray.collapse_on_start"));
     AppendMenuW(menu, MF_STRING, kCmdConfigLocation, L10n::Tr("tray.config_location"));
     AppendMenuW(menu, MF_STRING, kCmdStorageFolder, L10n::Tr("tray.storage_folder"));
     AppendMenuW(menu, MF_STRING, kCmdDefaultSettings, L10n::Tr("tray.default_settings"));
@@ -148,6 +151,8 @@ void Execute(HWND owner, int cmd) {
         Config::MarkDirty();
     } else if (cmd == kCmdAutoStart) {
         Config::SetAutoStart(!Config::AutoStartEnabled());
+    } else if (cmd == kCmdCollapseOnStart) {
+        Config::SetCollapseOnStart(!Config::CollapseOnStart());
     } else if (cmd == kCmdConfigLocation) {
         Config::RevealFile();
     } else if (cmd == kCmdStorageFolder) {

@@ -11,6 +11,7 @@
   "tray.config_location": "Config File Location",
   "tray.create_shortcut": "Create Desktop Shortcut",
   "tray.storage_folder": "Storage Folder...",
+  "tray.collapse_on_start": "Collapse Panels on Start",
   "tray.exit": "Exit",
 
   "fence.new_title": "New Fence",
