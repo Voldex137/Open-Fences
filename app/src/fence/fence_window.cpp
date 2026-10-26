@@ -195,8 +195,9 @@ void FenceWindow::SetDragOver(bool over) {
 
 void FenceWindow::CollapsedSize(int& w, int& h) const {
     const FenceAppearance& app = m_render->Appearance();
-    if (app.collapseStyle == 1) {   // icon tile: as big as a desktop icon cell
-        w = (int)(app.cellW + 0.5f);
+    if (app.collapseStyle == 1) {   // icon tile
+        // Just wider than the glyph (the icon keeps its size); a long title is clipped.
+        w = (int)(app.imgSize + 20.0f * Desktop::DpiScale() + 0.5f);
         h = (int)(app.cellH + 0.5f);
     } else {                        // title bar: keeps the expanded width
         w = m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
