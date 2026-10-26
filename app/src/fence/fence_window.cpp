@@ -211,8 +211,9 @@ void FenceWindow::ToggleCollapse() {
         m_collapsed = false;
         int w = m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
         int h = m_expandedH > th ? m_expandedH : th * 4;
-        SetWindowPos(m_hwnd, nullptr, 0, 0, w, h,
-            SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+        // An opened fence goes above its siblings, so it is not hidden under
+        // other fences or folded tiles it overlaps.
+        SetWindowPos(m_hwnd, HWND_TOP, 0, 0, w, h, SWP_NOMOVE | SWP_NOACTIVATE);
         // Icon metrics may have changed while folded (desktop icon zoom);
         // the grid is available again now, so apply the deferred relayout.
         if (m_relayoutPending) {
