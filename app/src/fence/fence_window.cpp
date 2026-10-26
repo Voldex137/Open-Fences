@@ -162,6 +162,7 @@ void FenceWindow::AddIcon(const std::wstring& name, const std::wstring& path,
 }
 
 int FenceWindow::HitTestIcon(int mx, int my) const {
+    if (m_collapsed) return -1;   // the icons are folded away: nothing to hit
     IconGrid g = GetIconGrid();
     float adjY = (float)my;
     if (m_render->Appearance().displayMode == 1 && my >= (int)ContentTop())
@@ -225,6 +226,8 @@ void FenceWindow::ToggleCollapse() {
         // Collapse down to just the title bar
         m_collapsed = true;
         m_popped = false;
+        ClearSelection();   // a closed panel keeps no selection
+        m_hoverIcon = -1;
         m_expandedH = (int)m_render->Height();
         m_expandedW = (int)m_render->Width();
         int w, h;

@@ -166,7 +166,7 @@ private:
     // Panel-local palette (independent of the fence appearance)
     ComPtr<ID2D1SolidColorBrush> m_brTint, m_brBorder, m_brHighlight, m_brText,
         m_brText2, m_brAccent, m_brHover, m_brSel, m_brDanger, m_brTrack,
-        m_brThumb, m_brField, m_brSwatchRing;
+        m_brThumb, m_brField, m_brSwatchRing, m_brOnAccent;
     // Fixed preset swatches are cached once (not rebuilt on every redraw).
     ComPtr<ID2D1SolidColorBrush> m_brPanelSw[8], m_brTitleSw[8];
     ComPtr<IDWriteTextFormat> m_fmtHeader, m_fmtLabel, m_fmtValue, m_fmtSymbol,

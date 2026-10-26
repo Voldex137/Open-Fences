@@ -34,6 +34,7 @@ void SettingsPanel::CreatePanelBrushes() {
     mk(0.98f, 0.28f, 0.24f, 1.0f, &m_brDanger);
     mk(1, 1, 1, 0.35f, &m_brTrack);
     mk(1, 1, 1, 0.92f, &m_brThumb);
+    mk(0.04f, 0.05f, 0.07f, 1.0f, &m_brOnAccent);      // text on the light accent fill
     mk(1, 1, 1, 0.05f, &m_brField);                    // input wells / buttons
     mk(0.30f, 0.76f, 1.0f, 0.90f, &m_brSwatchRing);
     // Preset color swatches: build once, reuse on every redraw.

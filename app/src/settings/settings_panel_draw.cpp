@@ -244,7 +244,7 @@ void SettingsPanel::DrawSegments(const wchar_t* caption, float labelY,
         bool isActive = (active == i);
         FillRounded(rects[i], 6 * m_s, isActive ? m_brAccent.Get() : m_brField.Get());
         if (!isActive) DrawHoverRing(rects[i], hitBase + i);
-        DrawString(label, rects[i], m_fmtCenter.Get(), isActive ? m_brThumb.Get() : m_brText2.Get());
+        DrawString(label, rects[i], m_fmtCenter.Get(), isActive ? m_brOnAccent.Get() : m_brText2.Get());
         i++;
     }
 }

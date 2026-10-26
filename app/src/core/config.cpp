@@ -142,7 +142,7 @@ bool SaveNow() {
     json j;
     j["version"]  = 1;
     j["language"] = ToUtf8(L10n::CurrentCode());
-    j["storageFolder"] = ToUtf8(Storage::Folder());
+    if (!Storage::IsDefault()) j["storageFolder"] = ToUtf8(Storage::Folder());   // only a folder the user chose
     j["hideAll"]  = FenceManager::AllHidden();
     j["styles"]   = Presets::ToJson();
     j["collapseOnStart"] = g_collapseOnStart;

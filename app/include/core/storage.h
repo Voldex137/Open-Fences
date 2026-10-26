@@ -10,9 +10,11 @@
 namespace Storage {
 
 // The storage folder (setting, saved in config.json). Defaults to
-// "<Documents>\openFences".
+// "<Documents>\Open Fences".
 std::wstring Folder();
 void SetFolder(const std::wstring& path);
+// True while the user has not picked a folder (the default is in use).
+bool IsDefault();
 
 // True for a file or folder that sits directly on the user's or the public desktop.
 bool IsDesktopItem(const std::wstring& path);

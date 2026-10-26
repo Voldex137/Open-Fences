@@ -72,10 +72,12 @@ std::wstring Folder() {
     if (!g_folder.empty()) return g_folder;
     std::wstring docs = KnownFolder(FOLDERID_Documents);
     if (docs.empty()) docs = KnownFolder(FOLDERID_Profile);
-    return docs + L"\\openFences";
+    return docs + L"\\Open Fences";
 }
 
 void SetFolder(const std::wstring& path) { g_folder = Normalize(path); }
+
+bool IsDefault() { return g_folder.empty(); }
 
 bool IsDesktopItem(const std::wstring& path) {
     // Shell namespace items ("::{...}": This PC, Recycle Bin) are not files.
