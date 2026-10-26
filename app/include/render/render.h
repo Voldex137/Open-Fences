@@ -81,6 +81,7 @@ struct FenceViewState {
     // Caret blink phase, plus the title rename (the title text is the DrawFence
     // argument) and the search box: caret and selection offsets into their text.
     bool blink = false;
+    bool tileSelected = false;   // the folded icon tile is part of the desktop selection
     bool titleEditing = false;
     int titleCaret = 0, titleSelBegin = 0, titleSelEnd = 0;
     int searchCaret = 0, searchSelBegin = 0, searchSelEnd = 0;

@@ -53,7 +53,10 @@ public:
     }
 
     STDMETHOD(DragEnter)(IDataObject* pDataObj, DWORD, POINTL, DWORD* pdwEffect) {
-        m_over = HasShellDropFormat(pDataObj);
+        auto* src = (FenceWindow*)GetWindowLongPtr(m_hwnd, GWLP_USERDATA);
+        // Icons dragged out of this very fence are not a new drop: moving inside it is
+        // the manual in-window drag, so bringing them back changes nothing.
+        m_over = HasShellDropFormat(pDataObj) && !(src && src->IsExternalDragSource());
         *pdwEffect = m_over ? DROPEFFECT_MOVE : DROPEFFECT_NONE;
         if (m_over) {
             auto* self = (FenceWindow*)GetWindowLongPtr(m_hwnd, GWLP_USERDATA);

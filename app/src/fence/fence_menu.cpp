@@ -58,12 +58,12 @@ void AttachGlyph(GlyphBitmapSet& glyphs, int sizePx, HMENU menu, UINT item, bool
 }  // namespace
 
 // Remove icon `idx` from the fence, repairing the selection/hover bookkeeping.
-void FenceWindow::RemoveIconAt(int idx) {
+void FenceWindow::RemoveIconAt(int idx, bool returnStored) {
     if (idx < 0 || idx >= (int)m_icons.size()) return;
     // Drop the removed path from the selection set so no entry
     // dangles pointing at a dead icon.
     // A file that was moved into the storage folder goes back to the desktop.
-    if (Storage::IsStored(m_icons[idx].path)) Storage::ReturnToDesktop(m_icons[idx].path);
+    if (returnStored && Storage::IsStored(m_icons[idx].path)) Storage::ReturnToDesktop(m_icons[idx].path);
     auto& sel = m_selectedPaths;
     sel.erase(std::remove(sel.begin(), sel.end(), m_icons[idx].path), sel.end());
     m_icons.erase(m_icons.begin() + idx);

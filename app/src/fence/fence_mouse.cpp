@@ -480,6 +480,12 @@ void FenceWindow::DragIcons(int mx, int my) {
         // squatters are pushed to the nearest free cells.
         PushGroupOut();
     }
+    // Past the window edge the drag turns into a shell drag: the files can be dropped
+    // on the desktop, in Explorer, or on another fence.
+    if (CursorLeftWindow((int)(10.0f * Desktop::DpiScale()))) {
+        BeginExternalDrag();
+        return;
+    }
     // The whole selection rides ONE shared delta (Explorer group drag). For a
     // single-icon selection this is exactly the old offset-follow behavior.
     float dx = (float)(mx - m_dragGrabX);

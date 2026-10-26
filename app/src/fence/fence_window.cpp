@@ -97,6 +97,7 @@ void FenceWindow::Redraw() {
     view.searchText = IsMapped() ? &m_searchEdit.Text() : nullptr;
     view.caretOn    = m_searchFocused && m_cursorVisible;
     view.blink      = m_cursorVisible;
+    view.tileSelected = m_tileSelected;
     view.searchCaret    = (int)m_searchEdit.Caret();
     view.searchSelBegin = (int)m_searchEdit.SelBegin();
     view.searchSelEnd   = (int)m_searchEdit.SelEnd();
@@ -231,6 +232,7 @@ void FenceWindow::ToggleCollapse() {
     if (m_collapsed) {
         // Expand back to the remembered full size
         m_collapsed = false;
+        m_tileSelected = false;   // opening it ends its part in a desktop selection
         int w = m_expandedW > 0 ? m_expandedW : (int)m_render->Width();
         int h = m_expandedH > th ? m_expandedH : th * 4;
         // An opened fence goes above its siblings, so it is not hidden under

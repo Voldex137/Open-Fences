@@ -173,6 +173,8 @@ void RenderContext::DrawCollapsedTile(const Frame& f) {
         f.ctx.FillRoundedRectangle(shape, m_titleBrush.Get());
     }
     DrawTopHighlight(f);
+    if (f.view && f.view->tileSelected)   // like a selected desktop icon: accent plate and edge
+        FillStatePlate(f.ctx, m_app, { 1.0f, 1.0f, f.w - 1.0f, f.h - 1.0f }, f.radius, false, true);
     float glyph = (std::min)(m_app.imgSize, f.w - 8.0f);
     DrawFenceIcon(f, (f.w - glyph) * 0.5f, 6.0f, glyph);
     D2D1_RECT_F label{ 3.0f, 6.0f + glyph + 2.0f, f.w - 3.0f, f.h - 2.0f };

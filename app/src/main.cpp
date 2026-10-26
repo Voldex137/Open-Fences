@@ -10,6 +10,7 @@
 #include "shell/desktop_host.h"
 #include "shell/desktop_icons.h"
 #include "shell/shell_integration.h"
+#include "shell/desktop_selection.h"
 #include "tray/tray.h"
 
 namespace {
@@ -20,6 +21,7 @@ UINT g_taskbarCreated = 0;   // broadcast when explorer (re)starts
 // Owner-window timers. Config::MarkDirty arms the save timer (id 3) itself.
 constexpr UINT_PTR kTimerDesktopWatch = 2;   // icon visibility / icon size / anchors, every 300 ms
 constexpr UINT_PTR kTimerConfigSave   = 3;   // debounced config save
+constexpr UINT_PTR kTimerSelection    = 6;   // 40 ms: mirrors the desktop rubber band onto folded tiles
 constexpr int kHotkeyToggleIcons = 1;        // Ctrl+Shift+H
 
 // Every 300 ms: keep the fences alive across explorer's own icon hide/show,
@@ -65,6 +67,7 @@ LRESULT CALLBACK OwnerWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
     case WM_TIMER:
         if (wp == kTimerDesktopWatch) OnDesktopWatchTimer();
         else if (wp == kTimerConfigSave) Config::SaveNow();
+        else if (wp == kTimerSelection) DesktopSelection::Poll();
         return 0;
     case WM_COPYDATA: {   // a command forwarded by a second process (Explorer menu entry)
         auto* cds = (COPYDATASTRUCT*)lp;
@@ -143,6 +146,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, PWSTR, int) {
     // space (the registry value is persisted lazily and lags wheel zoom) and
     // every fence re-adopts it. Each fence early-outs unless the size changed.
     SetTimer(g_owner, kTimerDesktopWatch, 300, nullptr);
+    SetTimer(g_owner, kTimerSelection, 40, nullptr);
 
     MSG msg;
     while (GetMessageW(&msg, nullptr, 0, 0)) {

@@ -95,6 +95,12 @@ public:
     /// height shows immediately (no-op when expanded).
     void SyncCollapsedSize();
     // Stack of folded panels (see fence_stack.h): the panel directly above this one.
+    // True while icons of THIS fence are being dragged out as a shell drag (its own drop
+    // target must not take them back as a new copy).
+    bool IsExternalDragSource() const { return s_externalDragSource == this; }
+    // A folded icon tile can be selected by the desktop's rubber band (desktop_selection.h).
+    bool IsTileSelected() const { return m_tileSelected; }
+    void SetTileSelected(bool on) { if (m_tileSelected != on) { m_tileSelected = on; if (m_collapsed) Redraw(); } }
     const std::wstring& StackAbove() const { return m_stackAbove; }
     void SetStackAbove(const std::wstring& id) { m_stackAbove = id; }
     // Adopts the editable look of `src` (a preset, the defaults, or another fence)
@@ -182,7 +188,12 @@ private:
     ListScrollbar CurrentListScrollbar() const;     // geometry for the current size and scroll
 
     // Context menus (fence_menu.cpp)
-    void RemoveIconAt(int idx);                       // drop one icon and fix selection/hover
+    // `returnStored`: a file in the storage folder goes back to the desktop (false when it was
+    // dragged out, where its new place is already decided).
+    void RemoveIconAt(int idx, bool returnStored = true);
+    bool CursorLeftWindow(int margin) const;
+    void BeginExternalDrag();                       // icon drag became a shell drag (fence_drag_source.cpp)
+    static FenceWindow* s_externalDragSource;                       // drop one icon and fix selection/hover
     bool ShowIconShellMenu(int iconHit, POINT screenPt);
     void ShowFenceMenu(int iconHit, POINT screenPt, POINT clientPt);
     void ChooseAndMapFolder();
@@ -349,6 +360,7 @@ private:
     std::wstring m_stackAbove;
     POINT m_movePressPt = {};   // cursor (screen) at the press that armed a move
     bool m_moveStarted = false; // the cursor has travelled far enough to count as a drag
+    bool m_tileSelected = false;
     bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
     POINT m_tilePressPt = {};
     void CollapsedSize(int& w, int& h) const;   // window size while collapsed

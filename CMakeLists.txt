@@ -43,10 +43,12 @@ add_executable(openfences
     app/src/fence/fence_manager.cpp
     app/src/shell/desktop_icons.cpp
     app/src/shell/shell_integration.cpp
+    app/src/shell/desktop_selection.cpp
     app/src/tray/tray.cpp
     app/src/fence/fence_layout.cpp
     app/src/fence/icon_grid.cpp
     app/src/fence/stack_chain.cpp
+    app/src/fence/fence_drag_source.cpp
     app/src/fence/text_edit.cpp
     app/src/fence/fence_stack.cpp
     app/src/fence/icon_sort.cpp
