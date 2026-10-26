@@ -10,6 +10,7 @@
 #include "render/list_scrollbar.h"
 #include "fence/icon_grid.h"
 #include "fence/text_edit.h"
+#include "shell/desktop_selection.h"
 
 struct IContextMenu;
 
@@ -175,6 +176,7 @@ private:
     bool PressListScrollbar(int mx, int my);        // true when the press hit the scrollbar
     void PressTitleBar(int mx, int my);
     void PressTile(int mx, int my);
+    friend void DesktopSelection::SettleTiles(const std::vector<HWND>&);
     // `ignore`: tiles of a dragged group that are not placed yet (they must not block slots).
     void SnapTileToDesktopGrid(const std::vector<HWND>* ignore = nullptr);     // a collapsed icon tile sits on the desktop icon grid
     void CollapseOnOutsideClick();    // timer: folder mode folds back after a click elsewhere
@@ -368,6 +370,7 @@ private:
     struct TileMember { HWND hwnd; POINT start; };
     std::vector<TileMember> m_tileGroup;
     POINT m_tileGroupSelfStart = {};
+    std::vector<DesktopSelection::Item> m_tileDesktopItems;   // selected desktop icons that ride along
     bool m_tilePress = false;   // press on a collapsed icon tile: a click expands, a drag moves
     POINT m_tilePressPt = {};
     void CollapsedSize(int& w, int& h) const;   // window size while collapsed

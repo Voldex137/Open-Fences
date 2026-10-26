@@ -264,6 +264,7 @@ void FenceWindow::PressTile(int mx, int my) {
     GetCursorPos(&m_tilePressPt);
     // Pressing a tile that is part of the selection drags the whole selection.
     m_tileGroup.clear();
+    m_tileDesktopItems.clear();
     if (m_tileSelected) {
         for (auto& f : FenceManager::All()) {
             if (f.get() == this || !f->IsTileSelected() || !f->IsCollapsed() ||
@@ -273,6 +274,7 @@ void FenceWindow::PressTile(int mx, int my) {
         }
         RECT me;
         if (GetWindowRect(m_hwnd, &me)) m_tileGroupSelfStart = POINT{ me.left, me.top };
+        m_tileDesktopItems = DesktopSelection::SelectedItems();   // ordinary icons selected together with the tiles
     }
     SetCapture(m_hwnd);
 }
@@ -451,8 +453,8 @@ void FenceWindow::MoveFenceWithCursor(int mx, int my) {
     if (parent) ScreenToClient(parent, &p);
     SetWindowPos(m_hwnd, nullptr, p.x - m_moveOffX, p.y - m_moveOffY,
                  0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
-    // The rest of a dragged tile selection follows by the same distance.
-    if (!m_tileGroup.empty()) {
+    // The rest of a dragged tile selection (and the selected desktop icons) follows by the same distance.
+    if (!m_tileGroup.empty() || !m_tileDesktopItems.empty()) {
         RECT me;
         if (GetWindowRect(m_hwnd, &me)) {
             int dx = me.left - m_tileGroupSelfStart.x, dy = me.top - m_tileGroupSelfStart.y;
@@ -461,6 +463,7 @@ void FenceWindow::MoveFenceWithCursor(int mx, int my) {
                 if (HWND par = GetParent(g.hwnd)) ScreenToClient(par, &np);
                 SetWindowPos(g.hwnd, nullptr, np.x, np.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
             }
+            if (!m_tileDesktopItems.empty()) DesktopSelection::OffsetItems(m_tileDesktopItems, dx, dy);
         }
     }
 }
@@ -595,21 +598,25 @@ LRESULT FenceWindow::OnLButtonUp(UINT msg, WPARAM wp, LPARAM lp)     {
         if (m_tileGroup.empty()) {
             SnapTileToDesktopGrid();
         } else {
-            // The group settles tile by tile (the dragged one first); tiles that are not placed
-            // yet do not occupy slots, so neighbours keep their spacing.
-            std::vector<HWND> pending{ m_hwnd };
-            for (const auto& g : m_tileGroup) pending.push_back(g.hwnd);
-            auto place = [&](FenceWindow* f) {
-                pending.erase(std::remove(pending.begin(), pending.end(), f->Hwnd()), pending.end());
-                f->SnapTileToDesktopGrid(&pending);
-            };
-            place(this);
-            for (const auto& g : m_tileGroup)
-                for (auto& f : FenceManager::All())
-                    if (f->Hwnd() == g.hwnd) { place(f.get()); break; }
+            std::vector<HWND> tiles{ m_hwnd };
+            for (const auto& g : m_tileGroup) tiles.push_back(g.hwnd);
+            DesktopSelection::SettleTiles(tiles);
+            // The ordinary icons that rode along land a whole number of cells away, so they
+            // stay on the desktop grid and keep their place relative to the tiles.
+            if (!m_tileDesktopItems.empty()) {
+                Desktop::IconGrid grid = Desktop::QueryIconGrid();
+                RECT me;
+                if (grid.ok && GetWindowRect(m_hwnd, &me)) {
+                    int dx = me.left - m_tileGroupSelfStart.x, dy = me.top - m_tileGroupSelfStart.y;
+                    int sx = (int)std::lround((double)dx / grid.cellW) * grid.cellW;
+                    int sy = (int)std::lround((double)dy / grid.cellH) * grid.cellH;
+                    DesktopSelection::OffsetItems(m_tileDesktopItems, sx, sy);
+                }
+            }
         }
     }
     m_tileGroup.clear();
+    m_tileDesktopItems.clear();
     m_moving = false;
     m_resizeMask = 0;
     if (wasBusy) ReleaseCapture();
