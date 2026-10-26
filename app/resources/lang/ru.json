@@ -1,9 +1,9 @@
 {
   "_meta": { "code": "ru", "name": "Русский" },
 
-  "tray.new_fence": "Новое ограждение",
-  "tray.show_all_fences": "Показать все ограждения",
-  "tray.hide_all_fences": "Скрыть все ограждения",
+  "tray.new_fence": "Новая панель",
+  "tray.show_all_fences": "Показать все панели",
+  "tray.hide_all_fences": "Скрыть все панели",
   "tray.show_desktop_icons": "Показать значки рабочего стола",
   "tray.hide_desktop_icons": "Скрыть значки рабочего стола",
   "tray.language": "Язык",
@@ -13,13 +13,13 @@
   "tray.storage_folder": "Папка для файлов...",
   "tray.exit": "Выход",
 
-  "fence.new_title": "Новое ограждение",
+  "fence.new_title": "Новая панель",
   "fence.rename": "Переименовать",
   "fence.appearance": "Настройки внешнего вида...",
-  "fence.delete": "Удалить ограждение",
+  "fence.delete": "Удалить панель",
   "fence.remove": "Убрать",
-  "fence.remove_from_fence": "Убрать из ограждения",
-  "fence.remove_n_from_fence": "элементов (убрать из окна)",
+  "fence.remove_from_fence": "Убрать из панели",
+  "fence.remove_n_from_fence": "элементов (убрать из панели)",
   "fence.map_folder": "Привязать папку...",
   "fence.unmap_folder": "Отвязать папку",
   "fence.sort_by": "Сортировка",
@@ -35,7 +35,7 @@
   "fence.no_results": "Ничего не найдено",
 
   "dialog.map_folder.title": "Привязка папки",
-  "dialog.map_folder.confirm": "При привязке папки текущее содержимое ограждения будет очищено. Продолжить?",
+  "dialog.map_folder.confirm": "При привязке папки текущее содержимое панели будет очищено. Продолжить?",
 
   "settings.title": "Внешний вид",
   "settings.font": "Шрифт",
@@ -54,9 +54,9 @@
   "settings.fill_direction": "Направление заполнения",
   "settings.fill.horizontal": "Горизонтально",
   "settings.fill.vertical": "Вертикально",
-  "tray.default_settings": "Настройки окон по умолчанию...",
-  "settings.defaults_title": "Настройки окон по умолчанию",
-  "settings.auto_fit": "Подгонять сетку под окно",
+  "tray.default_settings": "Настройки панелей по умолчанию...",
+  "settings.defaults_title": "Настройки панелей по умолчанию",
+  "settings.auto_fit": "Подгонять сетку под размер панели",
   "settings.on": "Вкл",
   "settings.off": "Выкл",
   "settings.collapse_style": "В свёрнутом виде",
@@ -75,5 +75,5 @@
   "presets.delete": "Удалить пресет",
   "presets.defaults": "Настройки по умолчанию",
   "presets.none": "(нет)",
-  "settings.delete_fence": "Удалить ограждение"
+  "settings.delete_fence": "Удалить панель"
 }
