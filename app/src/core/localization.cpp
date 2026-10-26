@@ -1,4 +1,5 @@
 #include "core/localization.h"
+#include "core/app_paths.h"
 
 #include <windows.h>
 #include <shlobj.h>
@@ -115,11 +116,7 @@ std::wstring ExeDir() {
     return s.substr(0, s.find_last_of(L"\\/"));
 }
 
-std::wstring AppDataDir() {
-    wchar_t path[MAX_PATH];
-    if (FAILED(SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, SHGFP_TYPE_CURRENT, path))) return {};
-    return std::wstring(path) + L"\\Open Fences";
-}
+std::wstring AppDataDir() { return AppPaths::DataDir(); }
 
 int IndexOf(const std::wstring& code) {
     std::wstring want = Lower(code);

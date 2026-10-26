@@ -13,3 +13,6 @@ build/
 *.tlog
 .vs/
 CMakeUserPresets.json
+
+# Packaging output (tools/package.ps1)
+dist/

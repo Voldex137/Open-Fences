@@ -80,6 +80,7 @@ add_executable(openfences
     app/src/render/menu_icons.cpp
     app/src/core/config.cpp
     app/src/core/storage.cpp
+    app/src/core/app_paths.cpp
     app/src/core/appearance_json.cpp
     app/src/core/presets.cpp
     app/src/core/localization.cpp
@@ -137,7 +138,7 @@ endif()
 option(OPENFENCES_BUILD_TESTS "Build the tests in tests/" OFF)
 if(OPENFENCES_BUILD_TESTS)
     enable_testing()
-    add_executable(l10n_test tests/l10n_test.cpp app/src/core/localization.cpp)
+    add_executable(l10n_test tests/l10n_test.cpp app/src/core/localization.cpp app/src/core/app_paths.cpp)
     target_include_directories(l10n_test PRIVATE app/include)
     target_link_libraries(l10n_test PRIVATE shell32 nlohmann_json::nlohmann_json)
     # The loader also reads "<exe dir>\lang\*.json", so the test needs no embedded resources.

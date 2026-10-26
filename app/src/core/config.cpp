@@ -3,6 +3,7 @@
 #include "fence/fence_manager.h"
 #include "core/localization.h"
 #include "core/storage.h"
+#include "core/app_paths.h"
 #include "core/appearance_json.h"
 #include "core/presets.h"
 #include <nlohmann/json.hpp>
@@ -130,11 +131,7 @@ void LoadFence(const json& jf) {
 namespace Config {
 
 const std::wstring& Path() {
-    static const std::wstring p = [] {
-        wchar_t appdata[MAX_PATH] = {};
-        SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appdata);
-        return std::wstring(appdata) + L"\\Open Fences\\config.json";
-    }();
+    static const std::wstring p = AppPaths::DataDir() + L"\\config.json";
     return p;
 }
 
@@ -246,6 +243,7 @@ static const wchar_t* const kRunValue = L"Open Fences";
 // Versions before the rename kept everything under the name "openFences": move
 // the settings folder and the autostart entry to "Open Fences" once.
 void MigrateLegacyData() {
+    if (AppPaths::IsPortable()) return;   // a portable copy has no older installed data
     wchar_t appdata[MAX_PATH] = {};
     SHGetFolderPathW(nullptr, CSIDL_APPDATA, nullptr, 0, appdata);
     std::wstring oldDir = std::wstring(appdata) + L"\\openFences";

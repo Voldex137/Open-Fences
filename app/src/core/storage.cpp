@@ -1,4 +1,5 @@
 #include "core/storage.h"
+#include "core/app_paths.h"
 
 #include <windows.h>
 #include <shlobj.h>
@@ -70,6 +71,7 @@ bool MovePath(const std::wstring& from, const std::wstring& to) {
 
 std::wstring Folder() {
     if (!g_folder.empty()) return g_folder;
+    if (AppPaths::IsPortable()) return AppPaths::DataDir() + L"\\Files";   // stays inside the portable folder
     std::wstring docs = KnownFolder(FOLDERID_Documents);
     if (docs.empty()) docs = KnownFolder(FOLDERID_Profile);
     return docs + L"\\Open Fences";
